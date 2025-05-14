@@ -1,5 +1,6 @@
 from qiskit import QuantumCircuit
 from iceberg_codegen import build_iceberg_circuit
+from utils import convert_to_PCS_circ
 
 """
 Currently a skeleton for the QED compiler.
@@ -66,7 +67,13 @@ def place_pcs(circ: QuantumCircuit, layout: dict, gateset: list, n_checks: int =
     """
     Insert Pauli Check Sandwiching (PCS) into the given circuit.
     """
-    raise NotImplementedError
+    if n_checks is None:
+        raise ValueError("place_pcs requires n_checks to be set")
+    sign_list, qc = convert_to_PCS_circ(
+        circ, circ.num_qubits, n_checks,
+        barriers=False, reverse=False
+    )
+    return qc, sign_list
 
 
 def place_afpc(circ: QuantumCircuit, layout: dict, gateset: list, n_checks: int = None) -> QuantumCircuit:
@@ -89,7 +96,7 @@ def place_iceberg(circ: QuantumCircuit, layout: dict, gateset: list, n_checks: i
         attach_syndrome=True,
         attach_readout=True,
     )
-    return phys_qc
+    return phys_qc, regs
 
 
 # ---------------------------------------------------------------------------- #
