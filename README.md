@@ -8,7 +8,8 @@ This project contains the first Python-based compiler that automatically integra
 Please visit the `example_notebooks` directory for `qed_compiler` tutorials.
 
 ## Supported QEC Protocols
-+ Pauli Check Sandwiching, PCS:
-+ Pauli Check Extrapolation, PCE:
-+ Ancilla-free Pauli Checks, AFPC:
-+ Iceberg Code (*Coming Soon*):
++ **Pauli Check Sandwiching, PCS**: PCS is technique used to detect and mitigate errors. PCS surrounds a payload circuit, $𝑈$ , with controlled Pauli operator checks that are selected such that $RUL = 𝑈$ . Errors on $𝑈$ can be detected
+on an ancilla through phase kickback. The errors that are detected in $U$ anticommute with the Pauli operators in the selected checks.
++ **Pauli Check Extrapolation, PCE**:
++ **Ancilla-free Pauli Checks, AFPC**:
++ **Iceberg Code** (*Coming Soon*):
