@@ -1,6 +1,6 @@
 from qiskit import QuantumCircuit
 from iceberg_codegen import build_iceberg_circuit
-from utils import convert_to_PCS_circ
+from utils import convert_to_PCS_circ, convert_to_ancilla_free_PCS_circ
 
 """
 Currently a skeleton for the QED compiler.
@@ -36,6 +36,7 @@ def percent_clifford(circ: QuantumCircuit) -> float:
     return count_clifford / len(instructions)
 
 
+
 def det_QED_strategy(circ: QuantumCircuit, tau: float = DEFAULT_CLIFFORD_THRESHOLD) -> str:
     """
     Decide which QED strategy to use.
@@ -46,13 +47,6 @@ def det_QED_strategy(circ: QuantumCircuit, tau: float = DEFAULT_CLIFFORD_THRESHO
 
     This function is intentionally modular: swap out or extend
     the decision logic here without touching placement routines.
-
-    Args:
-        circ: QuantumCircuit under test
-        tau: threshold for percent-Clifford
-
-    Returns:
-        "PCS" or "ICEBERG"
     """
     p_cliff = percent_clifford(circ)
     print(f"[det_QED_strategy] percent_clifford = {p_cliff:.2%}")
@@ -71,17 +65,23 @@ def place_pcs(circ: QuantumCircuit, layout: dict, gateset: list, n_checks: int =
         raise ValueError("place_pcs requires n_checks to be set")
     sign_list, qc = convert_to_PCS_circ(
         circ, circ.num_qubits, n_checks,
-        barriers=False, reverse=False
+        barriers=True, reverse=False
     )
     return qc, sign_list
 
 
 def place_afpc(circ: QuantumCircuit, layout: dict, gateset: list, n_checks: int = None) -> QuantumCircuit:
     """
-    (Optional) Insert Ancilla-Free Pauli Checks (AFPC) into the circuit.
+    Insert Ancilla-Free Pauli Checks (AFPC) into the circuit.
     Similar structure to place_pcs.
     """
-    raise NotImplementedError
+    if n_checks is None:
+        raise ValueError("place_afpc requires n_checks to be set")
+    sign_list, qc, left_mappings_list, right_mappings_list = convert_to_ancilla_free_PCS_circ(
+        circ, circ.num_qubits, n_checks,
+        barriers=True, reverse=False
+    )
+    return qc, sign_list, left_mappings_list, right_mappings_list
 
 
 def place_iceberg(circ: QuantumCircuit, layout: dict, gateset: list, n_checks: int = None) -> QuantumCircuit:
