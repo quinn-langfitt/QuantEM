@@ -54,7 +54,7 @@ def det_QED_strategy(circ: QuantumCircuit, tau: float = DEFAULT_CLIFFORD_THRESHO
 
 
 # ---------------------------------------------------------------------------- #
-# Placement Stubs
+# Functions for placement
 # ---------------------------------------------------------------------------- #
 
 def place_pcs(circ: QuantumCircuit, layout: dict, gateset: list, n_checks: int = None) -> QuantumCircuit:
@@ -98,6 +98,16 @@ def place_iceberg(circ: QuantumCircuit, layout: dict, gateset: list, n_checks: i
     )
     return phys_qc, regs
 
+
+# ---------------------------------------------------------------------------- #
+# Overhead Analysis Fucntions
+# ---------------------------------------------------------------------------- #
+
+def pcs_analysis(qed_circ: QuantumCircuit):
+    raise NotImplementedError("pcs_analysis not yet implemented")
+
+def iceberg_analysis(qed_circ: QuantumCircuit):
+    raise NotImplementedError("iceberg_analysis not yet implemented")
 
 # ---------------------------------------------------------------------------- #
 # Top-Level Compiler Function
