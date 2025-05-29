@@ -1,0 +1,16 @@
+[build-system]
+requires = ["setuptools", "setuptools-rust"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "seqc"
+dynamic = ["version"] # "dependencies"
+dependencies = [
+    "qiskit>=2.0"
+]
+
+[[tool.setuptools-rust.ext-modules]]
+target = "seqc.rust" # The last part of the name (e.g. "_lib") has to match lib.name in Cargo.toml,
+# See reference for RustExtension in https://setuptools-rust.readthedocs.io/en/latest/reference.html
+
+[project.scripts]
