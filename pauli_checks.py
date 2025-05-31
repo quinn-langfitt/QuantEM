@@ -1025,3 +1025,16 @@ def pauli_strings_commute(pauli_str1, pauli_str2):
         commute = True
     
     return commute
+
+def postselect_counts(counts: dict, num_ancillas: int)->dict:
+    '''Assumes that ancillas are on the left.
+    Args:
+        num_ancillas: number of ancilla qubits, i.e., number of checks.
+        counts: dict of distribution or counts.'''
+    final_counts = {}
+    for bitstring, count in counts.items():
+        data_str=bitstring[num_ancillas::]
+        ancilla_str=bitstring[:num_ancillas:]
+        if  ancilla_str=="0"*num_ancillas: 
+            final_counts[data_str] = final_counts.get(data_str, 0) + count
+    return final_counts
