@@ -8,7 +8,7 @@ from qiskit.transpiler.preset_passmanagers.plugin import PassManagerStagePluginM
 
 from qiskit_ibm_runtime.fake_provider import *
 
-from mod_sabre_swap import SabreSwap
+from quantem.mod_sabre_swap import SabreSwap
 
 
 def apply_layout(qc: QuantumCircuit, layout: Layout):
@@ -17,6 +17,7 @@ def apply_layout(qc: QuantumCircuit, layout: Layout):
     pm = PassManager([SetLayout(layout), ApplyLayout()])
 
     return pm.run(qc)
+
 
 def generate_permitted_swaps(coupling_map: CouplingMap, pinned_qubits=None):
     if pinned_qubits is None:
@@ -35,6 +36,7 @@ def generate_permitted_swaps(coupling_map: CouplingMap, pinned_qubits=None):
 
     return coupling_map
 
+
 def pinned_routing(qc: QuantumCircuit, coupling_map: CouplingMap, pinned_qubits=None):
     permitted_swaps = generate_permitted_swaps(coupling_map, pinned_qubits)
     sabre_swap = SabreSwap(coupling_map=coupling_map, permitted_swaps=permitted_swaps)
@@ -46,7 +48,9 @@ def pinned_routing(qc: QuantumCircuit, coupling_map: CouplingMap, pinned_qubits=
 plugin_manager = PassManagerStagePluginManager()
 
 
-def translate_and_optimize(qc: QuantumCircuit, basis_gates, optimization_level=None, seed=None):
+def translate_and_optimize(
+    qc: QuantumCircuit, basis_gates, optimization_level=None, seed=None
+):
     if optimization_level is None:
         config = user_config.get_config()
         optimization_level = config.get("transpile_optimization_level", 3)

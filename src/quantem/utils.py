@@ -32,7 +32,7 @@ from qiskit.transpiler import PassManager
 #             "SDG": [-1, "Y"]
 #         }
 #         return ops.get(op2, None) or Exception(f"{op2} gate wasn't matched in the DAG.")
-    
+
 #     @staticmethod
 #     def y(op2):
 #         '''Pushes y through op2.'''
@@ -45,8 +45,8 @@ from qiskit.transpiler import PassManager
 #             "SDG": [1, "X"]
 #         }
 #         return ops.get(op2, None) or Exception(f"{op2} gate wasn't matched in the DAG.")
-    
-#     @staticmethod        
+
+#     @staticmethod
 #     def z(op2):
 #         '''Pushes z through op2.'''
 #         ops = {
@@ -88,7 +88,7 @@ from qiskit.transpiler import PassManager
 #         '''Passes op1 through swap.'''
 #         return [1] + list(reversed(op1))
 
-    
+
 # def get_weight(pauli_string):
 #     '''Gets the weight of a Pauli string. Returns: int'''
 #     count = 0
@@ -102,7 +102,7 @@ from qiskit.transpiler import PassManager
 #         self.p2_weight = p2_weight
 #         self.p1_str = p1_str
 #         self.p2_str = p2_str
-        
+
 # class CheckOperator:
 #     '''Stores the check operation along with the phase. operations is a list of strings.'''
 
@@ -214,7 +214,7 @@ from qiskit.transpiler import PassManager
 #         phase_str = f"+{phase}" if len(str(phase)) == 1 else str(phase)
 #         operations.insert(0, phase_str)
 #         return "".join(operations)
-    
+
 # #     @staticmethod
 # #     def get_current_qubits(node):
 # #         '''Finding checks: Symbolic: get the current qubits whose operations that will be passed through.'''
@@ -225,7 +225,7 @@ from qiskit.transpiler import PassManager
 # #             return [node.qargs[0].index, node.qargs[1].index]
 # #         else:
 # #             assert False, "Overlooked a node operation."
-            
+
 #     # Use for new qiskit version (Qiskit verions >= 1.0)
 #     @staticmethod
 #     def get_current_qubits(self, node):
@@ -240,13 +240,13 @@ from qiskit.transpiler import PassManager
 #             return [dag_qubit_map[node.qargs[0]], dag_qubit_map[node.qargs[1]]]
 #         else:
 #             assert False, "Overlooked a node operation."
-            
+
 
 ###################################
 # Automatic check injection utils.
 ###################################
 
-from pauli_checks import *
+from quantem.pauli_checks import *
 
 # def check_to_ancilla_free_circ(check_str, num_qubits):
 #     """
@@ -254,8 +254,8 @@ from pauli_checks import *
 #     returns a QuantumCircuit on num_qubits that applies a single-qubit gate on each qubit as follows:
 #       - If the corresponding character is "X", apply an H gate.
 #       - If the character is "Z" or "I", do nothing.
-    
-#     The check string is assumed to be ordered so that the first non-phase character 
+
+#     The check string is assumed to be ordered so that the first non-phase character
 #     corresponds to the last qubit (num_qubits-1), the second to the next-to-last, and so on.
 #     """
 #     # Remove the phase portion (assumed to be the first two characters).
@@ -271,10 +271,10 @@ from pauli_checks import *
 # def convert_to_ancilla_free_PCS_circ(circ, num_qubits, num_checks, barriers=False):
 #     """
 #     Converts the given circuit to an ancilla-free PCS circuit.
-    
+
 #     The process is:
 #       1. Find the check pairs (p1 and p2) using the existing ChecksFinder logic.
-#       2. For each check pair, convert the left-check string and right-check string into 
+#       2. For each check pair, convert the left-check string and right-check string into
 #          ancilla-free layers as follows:
 #            - "X" maps to an H gate.
 #            - "Z" (and "I") map to no operation.
@@ -282,7 +282,7 @@ from pauli_checks import *
 #          If barriers=True, a single barrier is inserted between the left-check block and payload,
 #          and a single barrier between the payload and the right-check block.
 #          The final circuit uses the same number of qubits as the original (no ancillas added).
-    
+
 #     Returns a tuple (sign_list, final_circ).
 #     """
 
@@ -290,16 +290,16 @@ from pauli_checks import *
 #     characters = ['I', 'X', 'Z']
 #     candidate_strings = [''.join(p) for p in itertools.product(characters, repeat=num_qubits)
 #                          if not all(c == 'I' for c in p)]
-    
+
 #     def weight(pauli_string):
 #         return sum(1 for char in pauli_string if char != 'I')
-    
+
 #     sorted_strings = sorted(candidate_strings, key=weight)
-    
+
 #     test_finder = ChecksFinder(num_qubits, circ)
 #     p1_list = []   # will store [p1_str, p2_str] pairs (each string includes a phase in the first two characters)
 #     found_checks = 0
-    
+
 #     for string in sorted_strings:
 #         string_list = list(string)
 #         try:
@@ -316,29 +316,29 @@ from pauli_checks import *
 
 #     if found_checks < num_checks:
 #         print("Warning: Less checks found than required.")
-    
+
 #     # Build left-check and right-check circuits for each layer.
 #     left_checks = []
 #     right_checks = []
 #     sign_list = []
-    
+
 #     for i in range(num_checks):
 #         left_str = p1_list[i][0]
 #         right_str = p1_list[i][1]
 #         sign_list.append(left_str[:2])
 #         left_checks.append(check_to_ancilla_free_circ(left_str, num_qubits))
 #         right_checks.append(check_to_ancilla_free_circ(right_str, num_qubits))
-    
+
 #     # Combine the left-check circuits sequentially (without internal barriers).
 #     left_check_circ = QuantumCircuit(num_qubits)
 #     for lc in left_checks:
 #         left_check_circ = left_check_circ.compose(lc)
-    
+
 #     # Similarly, combine the right-check circuits.
 #     right_check_circ = QuantumCircuit(num_qubits)
 #     for rc in right_checks:
 #         right_check_circ = right_check_circ.compose(rc)
-    
+
 #     # Reassemble the final circuit.
 #     final_circ = left_check_circ.copy()
 #     if barriers:
@@ -347,7 +347,7 @@ from pauli_checks import *
 #     if barriers:
 #         final_circ.barrier()
 #     final_circ = final_circ.compose(right_check_circ)
-    
+
 #     return sign_list, final_circ
 
 # def check_to_ancilla_free_circ(check_str, num_qubits):
@@ -362,6 +362,7 @@ from pauli_checks import *
 #         elif op.upper() == "Z":
 #             mapping[target] = "Z"
 #     return qc, mapping
+
 
 def check_to_ancilla_free_circ(check_str, num_qubits):
     op_str = check_str[2:]
@@ -379,25 +380,33 @@ def check_to_ancilla_free_circ(check_str, num_qubits):
         # print("mapping =", mapping)
     return qc, mapping
 
-def convert_to_ancilla_free_PCS_circ(circ, num_qubits, num_checks, barriers=False, reverse=False):
+
+def convert_to_ancilla_free_PCS_circ(
+    circ, num_qubits, num_checks, barriers=False, reverse=False
+):
     import itertools
     from qiskit import QuantumCircuit
 
-    characters = ['I', 'X', 'Z']
-    candidate_strings = [''.join(p) for p in itertools.product(characters, repeat=num_qubits)
-                         if not all(c == 'I' for c in p)]
-    def weight(s): 
-        return sum(1 for c in s if c != 'I')
+    characters = ["I", "X", "Z"]
+    candidate_strings = [
+        "".join(p)
+        for p in itertools.product(characters, repeat=num_qubits)
+        if not all(c == "I" for c in p)
+    ]
+
+    def weight(s):
+        return sum(1 for c in s if c != "I")
+
     sorted_strings = sorted(candidate_strings, key=weight)
     if reverse:
         sorted_strings.reverse()
-    
+
     test_finder = ChecksFinder(num_qubits, circ)
     selected_pairs = []
     left_mappings_list = []
     right_mappings_list = []
     sign_list = []
-    
+
     for s in sorted_strings:
         try:
             result = test_finder.find_checks_sym(pauli_group_elem=list(s))
@@ -434,7 +443,7 @@ def convert_to_ancilla_free_PCS_circ(circ, num_qubits, num_checks, barriers=Fals
             continue
     if len(selected_pairs) < num_checks:
         print("Warning: Less checks found than required.")
-    
+
     final_left_check_circ = QuantumCircuit(num_qubits)
     for lm in left_mappings_list:
         for q in range(num_qubits):
@@ -444,7 +453,7 @@ def convert_to_ancilla_free_PCS_circ(circ, num_qubits, num_checks, barriers=Fals
     for pair in selected_pairs:
         rc, _ = check_to_ancilla_free_circ(pair[1], num_qubits)
         right_check_circ = right_check_circ.compose(rc)
-    
+
     final_circ = final_left_check_circ.copy()
     if barriers:
         final_circ.barrier()
@@ -464,18 +473,18 @@ def convert_to_ancilla_free_PCS_circ(circ, num_qubits, num_checks, barriers=Fals
 #     characters = ['I', 'X', 'Z']
 #     candidate_strings = [''.join(p) for p in itertools.product(characters, repeat=num_qubits)
 #                          if not all(c == 'I' for c in p)]
-#     def weight(s): 
+#     def weight(s):
 #         return sum(1 for c in s if c != 'I')
 #     sorted_strings = sorted(candidate_strings, key=weight)
 #     if reverse:
 #         sorted_strings.reverse()
-    
+
 #     test_finder = ChecksFinder(num_qubits, circ)
 #     selected_pairs = []
 #     agg_left = {}
 #     agg_right = {}
 #     sign_list = []
-    
+
 #     for s in sorted_strings:
 #         try:
 #             result = test_finder.find_checks_sym(pauli_group_elem=list(s))
@@ -509,7 +518,7 @@ def convert_to_ancilla_free_PCS_circ(circ, num_qubits, num_checks, barriers=Fals
 #             continue
 #     if len(selected_pairs) < num_checks:
 #         print("Warning: Less checks found than required.")
-    
+
 #     # Build the left-check circuit from the aggregated left mapping.
 #     final_left_check_circ = QuantumCircuit(num_qubits)
 #     for q in range(num_qubits):
@@ -520,7 +529,7 @@ def convert_to_ancilla_free_PCS_circ(circ, num_qubits, num_checks, barriers=Fals
 #     for pair in selected_pairs:
 #         rc, _ = check_to_ancilla_free_circ(pair[1], num_qubits)
 #         right_check_circ = right_check_circ.compose(rc)
-    
+
 #     final_circ = final_left_check_circ.copy()
 #     if barriers:
 #         final_circ.barrier()
@@ -601,29 +610,32 @@ def convert_to_ancilla_free_PCS_circ(circ, num_qubits, num_checks, barriers=Fals
 
 #     return sign_list, final_circ, left_mappings, right_mappings
 
-        
 
 def convert_to_PCS_circ(circ, num_qubits, num_checks, barriers=False, reverse=False):
     total_qubits = num_qubits + num_checks
-    
-    characters = ['I', 'X', 'Z']
-    strings = [''.join(p) for p in itertools.product(characters, repeat=num_qubits) if not all(c == 'I' for c in p)]
+
+    characters = ["I", "X", "Z"]
+    strings = [
+        "".join(p)
+        for p in itertools.product(characters, repeat=num_qubits)
+        if not all(c == "I" for c in p)
+    ]
     # print("strings to try ", strings)
     # print()
 
     def weight(pauli_string):
-        return sum(1 for char in pauli_string if char != 'I')
-    
+        return sum(1 for char in pauli_string if char != "I")
+
     sorted_strings = sorted(strings, key=weight)
     if reverse:
         sorted_strings.reverse()
     # print("Sorted by weight:", sorted_strings)
-    
+
     test_finder = ChecksFinder(num_qubits, circ)
     p1_list = []
     found_checks = 0  # Counter for successful checks found
 
-    for string in sorted_strings: 
+    for string in sorted_strings:
         # print("attempting ", string)
         string_list = list(string)
         try:
@@ -642,7 +654,6 @@ def convert_to_PCS_circ(circ, num_qubits, num_checks, barriers=False, reverse=Fa
     if found_checks < num_checks:
         print("Warning: Less checks found than required.")
 
-    
     # print("p1_list = ", p1_list)
     # sorted_list = sorted(p1_list, key=lambda s: s[1].count('I'))
     # # pauli_list = sorted_list[-num_qubits -1:-1]
@@ -650,7 +661,7 @@ def convert_to_PCS_circ(circ, num_qubits, num_checks, barriers=False, reverse=Fa
 
     # # print("sorted list: ", sorted_list)
     # print("pauli list: ", pauli_list)
-    
+
     initial_layout = {}
     for i in range(0, num_qubits):
         initial_layout[i] = [i]
@@ -658,7 +669,7 @@ def convert_to_PCS_circ(circ, num_qubits, num_checks, barriers=False, reverse=Fa
     final_layout = {}
     for i in range(0, num_qubits):
         final_layout[i] = [i]
-        
+
     # add pauli check on two sides:
     # specify the left and right pauli strings
     pcs_qc_list = []
@@ -672,12 +683,56 @@ def convert_to_PCS_circ(circ, num_qubits, num_checks, barriers=False, reverse=Fa
         # pr = pauli_list[i][1][2:]
         pr = p1_list[i][1][2:]
         if i == 0:
-            temp_qc = add_pauli_checks(circ, pl, pr, initial_layout, final_layout, False, False, False, False, barriers)
-            save_qc = add_pauli_checks(circ, pl, pr, initial_layout, final_layout, False, False, False, False, barriers)
+            temp_qc = add_pauli_checks(
+                circ,
+                pl,
+                pr,
+                initial_layout,
+                final_layout,
+                False,
+                False,
+                False,
+                False,
+                barriers,
+            )
+            save_qc = add_pauli_checks(
+                circ,
+                pl,
+                pr,
+                initial_layout,
+                final_layout,
+                False,
+                False,
+                False,
+                False,
+                barriers,
+            )
             prev_qc = temp_qc
         else:
-            temp_qc = add_pauli_checks(prev_qc, pl, pr, initial_layout, final_layout, False, False, False, False, barriers)
-            save_qc = add_pauli_checks(prev_qc, pl, pr, initial_layout, final_layout, False, False, False, False, barriers) 
+            temp_qc = add_pauli_checks(
+                prev_qc,
+                pl,
+                pr,
+                initial_layout,
+                final_layout,
+                False,
+                False,
+                False,
+                False,
+                barriers,
+            )
+            save_qc = add_pauli_checks(
+                prev_qc,
+                pl,
+                pr,
+                initial_layout,
+                final_layout,
+                False,
+                False,
+                False,
+                False,
+                barriers,
+            )
             prev_qc = temp_qc
         pl_list.append(pl)
         pr_list.append(pr)
@@ -685,13 +740,14 @@ def convert_to_PCS_circ(circ, num_qubits, num_checks, barriers=False, reverse=Fa
         sign_list.append(p1_list[i][0][:2])
         pcs_qc_list.append(save_qc)
 
-    qc = pcs_qc_list[-1] # return circuit with 'num_checks' implemented
+    qc = pcs_qc_list[-1]  # return circuit with 'num_checks' implemented
 
     return sign_list, qc
 
+
 def checks_on_checks_circ(circ, num_qubits, num_checks, barriers=False):
     total_qubits = num_qubits + num_checks
-        
+
     # add pauli check on two sides:
     # specify the left and right pauli strings
     pcs_qc_list = []
@@ -701,27 +757,71 @@ def checks_on_checks_circ(circ, num_qubits, num_checks, barriers=False):
 
     for i in range(0, num_checks):
         initial_layout = {}
-        for j in range(0, num_qubits+i):
+        for j in range(0, num_qubits + i):
             initial_layout[j] = [j]
-    
+
         final_layout = {}
-        for j in range(0, num_qubits+i):
+        for j in range(0, num_qubits + i):
             final_layout[j] = [j]
-        
+
         # pl = pauli_list[i][0][2:]
         # pl = p1_list[i][0][2:]
-        pl = i*"I" + "X" + "I" * (num_qubits-1)
+        pl = i * "I" + "X" + "I" * (num_qubits - 1)
         print(len(pl))
-        pr = i*"I" + "X" + "I" * (num_qubits-1)
+        pr = i * "I" + "X" + "I" * (num_qubits - 1)
         # pr = pauli_list[i][1][2:]
         # pr = p1_list[i][1][2:]
         if i == 0:
-            temp_qc = add_pauli_checks(circ, pl, pr, initial_layout, final_layout, False, False, False, False, barriers)
-            save_qc = add_pauli_checks(circ, pl, pr, initial_layout, final_layout, False, False, False, False, barriers)
+            temp_qc = add_pauli_checks(
+                circ,
+                pl,
+                pr,
+                initial_layout,
+                final_layout,
+                False,
+                False,
+                False,
+                False,
+                barriers,
+            )
+            save_qc = add_pauli_checks(
+                circ,
+                pl,
+                pr,
+                initial_layout,
+                final_layout,
+                False,
+                False,
+                False,
+                False,
+                barriers,
+            )
             prev_qc = temp_qc
         else:
-            temp_qc = add_pauli_checks(prev_qc, pl, pr, initial_layout, final_layout, False, False, False, False, barriers)
-            save_qc = add_pauli_checks(prev_qc, pl, pr, initial_layout, final_layout, False, False, False, False, barriers) 
+            temp_qc = add_pauli_checks(
+                prev_qc,
+                pl,
+                pr,
+                initial_layout,
+                final_layout,
+                False,
+                False,
+                False,
+                False,
+                barriers,
+            )
+            save_qc = add_pauli_checks(
+                prev_qc,
+                pl,
+                pr,
+                initial_layout,
+                final_layout,
+                False,
+                False,
+                False,
+                False,
+                barriers,
+            )
             prev_qc = temp_qc
         pl_list.append(pl)
         pr_list.append(pr)
@@ -729,16 +829,17 @@ def checks_on_checks_circ(circ, num_qubits, num_checks, barriers=False):
         # sign_list.append(p1_list[i][0][:2])
         pcs_qc_list.append(save_qc)
 
-    qc = pcs_qc_list[-1] # return circuit with 'num_checks' implemented
+    qc = pcs_qc_list[-1]  # return circuit with 'num_checks' implemented
 
     return sign_list, qc
+
 
 # def find_largest_clifford_block(slices):
 #     """
 #     Given a list of circuit slices (each slice is a Qiskit circuit or CircuitInstruction),
-#     returns a tuple: (start_index, end_index, block_slices) corresponding to the largest contiguous block 
+#     returns a tuple: (start_index, end_index, block_slices) corresponding to the largest contiguous block
 #     of slices that contain only Clifford gates.
-    
+
 #     If no slice is entirely Clifford, returns (None, None, []).
 #     """
 #     # Create a list to mark for each slice whether it is entirely Clifford.
@@ -762,13 +863,13 @@ def checks_on_checks_circ(circ, num_qubits, num_checks, barriers=False):
 #                 is_all_clifford = False
 #                 break
 #         slice_is_clifford.append(is_all_clifford)
-    
+
 #     # Now, find the longest contiguous block of True values in slice_is_clifford.
 #     max_len = 0
 #     max_start = None
 #     current_len = 0
 #     current_start = 0
-    
+
 #     for i, flag in enumerate(slice_is_clifford):
 #         if flag:
 #             if current_len == 0:
@@ -783,23 +884,24 @@ def checks_on_checks_circ(circ, num_qubits, num_checks, barriers=False):
 #     if current_len > max_len:
 #         max_len = current_len
 #         max_start = current_start
-    
+
 #     if max_start is None:
 #         # No contiguous Clifford block found.
 #         return None, None, []
-    
+
 #     max_end = max_start + max_len - 1
 #     block_slices = slices[max_start:max_end+1]
 #     return max_start, max_end, block_slices
 
+
 def find_largest_clifford_block(slices):
     """
     Given a list of circuit slices (each slice is a Qiskit circuit or CircuitInstruction),
-    returns a tuple: (start_index, end_index, block_slices) corresponding to the largest contiguous block 
+    returns a tuple: (start_index, end_index, block_slices) corresponding to the largest contiguous block
     of slices that contain only Clifford gates.
-    
+
     If no slice is entirely Clifford, returns (None, None, []).
-    
+
     In case two contiguous blocks have the same depth (i.e. same number of slices),
     the block with the larger total number of gates is chosen.
     """
@@ -807,7 +909,7 @@ def find_largest_clifford_block(slices):
     # and a parallel list with the gate count for that slice (only if it's Clifford).
     slice_is_clifford = []
     gate_counts = []  # number of gates in each slice (if Clifford, else 0)
-    
+
     for slice_item in slices:
         # Try to get the underlying instruction data.
         if hasattr(slice_item, "data"):
@@ -830,15 +932,15 @@ def find_largest_clifford_block(slices):
         slice_is_clifford.append(is_all_clifford)
         # Only count the gates if the slice is entirely Clifford.
         gate_counts.append(count if is_all_clifford else 0)
-    
-    max_len = 0           # maximum number of contiguous slices (depth)
-    max_gate_count = 0    # total number of gates in that block
-    max_start = None      # starting index of the best block
-    
-    current_len = 0       # current contiguous slice count
+
+    max_len = 0  # maximum number of contiguous slices (depth)
+    max_gate_count = 0  # total number of gates in that block
+    max_start = None  # starting index of the best block
+
+    current_len = 0  # current contiguous slice count
     current_gate_count = 0  # current total gate count in the block
     current_start = 0
-    
+
     for i, flag in enumerate(slice_is_clifford):
         if flag:
             if current_len == 0:
@@ -847,7 +949,9 @@ def find_largest_clifford_block(slices):
             current_gate_count += gate_counts[i]
         else:
             # Compare current block to the best so far.
-            if (current_len > max_len) or (current_len == max_len and current_gate_count > max_gate_count):
+            if (current_len > max_len) or (
+                current_len == max_len and current_gate_count > max_gate_count
+            ):
                 max_len = current_len
                 max_gate_count = current_gate_count
                 max_start = current_start
@@ -855,7 +959,9 @@ def find_largest_clifford_block(slices):
             current_len = 0
             current_gate_count = 0
     # Final check in case the longest block is at the end.
-    if (current_len > max_len) or (current_len == max_len and current_gate_count > max_gate_count):
+    if (current_len > max_len) or (
+        current_len == max_len and current_gate_count > max_gate_count
+    ):
         max_len = current_len
         max_gate_count = current_gate_count
         max_start = current_start
@@ -863,10 +969,11 @@ def find_largest_clifford_block(slices):
     if max_start is None:
         # No contiguous Clifford block found.
         return None, None, []
-    
+
     max_end = max_start + max_len - 1
-    block_slices = slices[max_start:max_end+1]
+    block_slices = slices[max_start : max_end + 1]
     return max_start, max_end, block_slices
+
 
 # Helper function for determining if a gate is Clifford.
 def is_clifford_gate(gate_name):
@@ -881,6 +988,7 @@ def is_clifford_gate(gate_name):
 from qiskit_addon_utils.slicing import slice_by_depth, combine_slices
 from qiskit.transpiler.passes import RemoveBarriers
 
+
 def expand_circuit(circ, target_num_qubits):
     """
     Expands the given circuit 'circ' so that it has 'target_num_qubits' total qubits.
@@ -894,62 +1002,65 @@ def expand_circuit(circ, target_num_qubits):
     new_circ.compose(circ, qubits=list(range(current_num)), inplace=True)
     return new_circ
 
+
 def convert_to_PCS_circ_largest_clifford(circ, num_qubits, num_checks):
     """
     Given a circuit, finds the largest contiguous block (slice) where every gate is Clifford.
     Then, it applies the PCS check-insertion (via convert_to_PCS_circ) only on that block,
     and reassembles the final circuit by replacing the original block with the protected block.
-    
+
     Parameters:
       circ: The original QuantumCircuit.
       num_qubits: Number of compute qubits.
       num_checks: Number of check layers to insert.
-      
+
     Returns:
-      (sign_list, final_circ) where final_circ is the circuit with checks inserted 
+      (sign_list, final_circ) where final_circ is the circuit with checks inserted
       only in the largest Clifford block.
     """
-    slices = slice_by_depth(circ, 1) # slice into depth 1 circuits
-    
+    slices = slice_by_depth(circ, 1)  # slice into depth 1 circuits
+
     start_idx, end_idx, clifford_block_slices = find_largest_clifford_block(slices)
     if start_idx is None:
         print("No contiguous Clifford block found. Returning original circuit.")
         return None, circ
     print(f"Largest Clifford block is from slice {start_idx} to {end_idx}.")
-    
+
     protected_block = combine_slices(clifford_block_slices, include_barriers=False)
 
-    sign_list, protected_block_with_checks = convert_to_PCS_circ(protected_block, num_qubits, num_checks)
+    sign_list, protected_block_with_checks = convert_to_PCS_circ(
+        protected_block, num_qubits, num_checks
+    )
     # print(protected_block_with_checks.draw())
-    
-    pre_slices = slices[:start_idx] # slices before the Clifford block.
-    post_slices = slices[end_idx+1:] # slices after the Clifford block.
-    
+
+    pre_slices = slices[:start_idx]  # slices before the Clifford block.
+    post_slices = slices[end_idx + 1 :]  # slices after the Clifford block.
+
     if pre_slices:
         pre_circ = combine_slices(pre_slices, include_barriers=False)
     else:
         pre_circ = QuantumCircuit(circ.num_qubits, circ.num_clbits)
-    
+
     if post_slices:
         post_circ = combine_slices(post_slices, include_barriers=False)
     else:
         post_circ = QuantumCircuit(circ.num_qubits, circ.num_clbits)
-    
+
     # The protected block with checks may include extra ancilla qubits.
     target_qubits = protected_block_with_checks.num_qubits
-    
+
     # Expand pre_circ and post_circ if necessary so that all parts have target_qubits.
     if pre_circ.num_qubits < target_qubits:
         pre_circ = expand_circuit(pre_circ, target_qubits)
     if post_circ.num_qubits < target_qubits:
         post_circ = expand_circuit(post_circ, target_qubits)
-    
+
     # Compose the final circuit.
     pre_circ.barrier()
     final_circ = pre_circ.compose(protected_block_with_checks)
     final_circ.barrier()
     final_circ = final_circ.compose(post_circ)
-    
+
     return sign_list, final_circ
 
 
@@ -971,7 +1082,7 @@ def convert_to_PCS_circ_largest_clifford(circ, num_qubits, num_checks):
 #     num_ancillas = 1
 #     original_size = circuit.num_qubits
 #     pcs_circuit = qiskit.QuantumCircuit(original_size + num_ancillas)
-    
+
 #     # Determine ancilla index based on the position
 #     if ancilla_position == 'top':
 #         ancilla_index = 0
@@ -1005,7 +1116,7 @@ def convert_to_PCS_circ_largest_clifford(circ, num_qubits, num_checks):
 
 #     # Find left and right checks
 #     check_finder = ChecksFinder(circ.num_qubits, circ)
-    
+
 #     top_result = check_finder.find_checks_sym(pauli_group_elem = list(top_qubit_check))
 #     pl_top, pr_top = top_result.p1_str, top_result.p2_str
 #     print(pl_top, pr_top)
@@ -1017,7 +1128,7 @@ def convert_to_PCS_circ_largest_clifford(circ, num_qubits, num_checks):
 #     left_check = pl_bottom[2:]
 #     right_check = pr_bottom[2:]
 #     temp_pcs_circ = add_pauli_checks(circ, left_check, right_check, ancilla_position='bottom')
-    
+
 #     # print("circuit after bottom check")
 #     # print(temp_pcs_circ)
 
@@ -1038,9 +1149,11 @@ from networkx import Graph
 from networkx.algorithms.approximation.clique import maximum_independent_set
 from itertools import combinations
 
+
 # Transpiles qc multiple times to find qc with least number of two-qubit gates
 def find_best_trans_qc(qc_list, num_trials):
     pass
+
 
 # def find_nonoverlapping_layouts(layouts):
 #     V = [frozenset(s) for s in layouts]
@@ -1048,16 +1161,17 @@ def find_best_trans_qc(qc_list, num_trials):
 #     G = Graph()
 #     G.add_nodes_from(V)
 #     G.add_edges_from(E)
-    
+
 #     max_indep_set = maximum_independent_set(G)
 #     # print( max_indep_set)
-    
+
 #     # To maintain original order and convert frozensets back to lists
 #     ordered_max_indep_set = [list(layout) for layout in layouts if frozenset(layout) in max_indep_set]
-    
+
 #     # print(ordered_max_indep_set)
 #     mapping_ranges = ordered_max_indep_set
 #     return mapping_ranges
+
 
 def find_nonoverlapping_layouts(layouts):
     used = set()
@@ -1068,18 +1182,18 @@ def find_nonoverlapping_layouts(layouts):
             non_overlapping.append(layout)
             used.update(layout_set)
     return non_overlapping
-    
+
 
 def get_VF2_layouts(qc, backend):
     trans_qc = transpile(qc, backend, optimization_level=3)
     small_qc = mm.deflate_circuit(trans_qc)
-    layouts = mm.matching_layouts(small_qc, backend) # Runs VF2
+    layouts = mm.matching_layouts(small_qc, backend)  # Runs VF2
     # layouts = mm.matching_layouts(qc, backend)
     # print("layouts:")
     # print(layouts)
 
     # mapping_ranges = find_nonoverlapping_layouts(layouts) # Runs maximum independent set to approximate maximum number of non-overlapping regions
-    mapping_ranges = find_nonoverlapping_layouts(layouts) 
+    mapping_ranges = find_nonoverlapping_layouts(layouts)
     # mapping_ranges = layouts
     return mapping_ranges, small_qc
 
@@ -1091,12 +1205,14 @@ def get_VF2_layouts(qc, backend):
 
 from collections import deque
 
+
 def build_graph(coupling_map):
     graph = {}
     for q1, q2 in coupling_map:
         graph.setdefault(q1, []).append(q2)
         graph.setdefault(q2, []).append(q1)
     return graph
+
 
 def generate_mapping_ranges_dfs(num_qubits_circuit, num_qubits_backend, coupling_map):
     graph = build_graph(coupling_map)
@@ -1125,6 +1241,7 @@ def generate_mapping_ranges_dfs(num_qubits_circuit, num_qubits_backend, coupling
         if len(used) >= num_qubits_backend:
             break
     return ranges
+
 
 def generate_mapping_ranges_bfs(num_qubits_circuit, num_qubits_backend, coupling_map):
     graph = build_graph(coupling_map)
@@ -1173,7 +1290,7 @@ def generate_mapping_ranges_bfs(num_qubits_circuit, num_qubits_backend, coupling
 #         return False
 #     visited = set()
 #     queue = deque([next(iter(subset))])  # Start BFS from any element in the subset
-    
+
 #     while queue:
 #         node = queue.popleft()
 #         if node in visited:
@@ -1181,7 +1298,7 @@ def generate_mapping_ranges_bfs(num_qubits_circuit, num_qubits_backend, coupling
 #         visited.add(node)
 #         # Enqueue all unvisited neighbors that are also in the subset
 #         queue.extend([neighbor for neighbor in graph[node] if neighbor in subset and neighbor not in visited])
-    
+
 #     return visited == set(subset)  # Check if we've visited all nodes in the subset
 
 # def generate_mapping_ranges(num_qubits_circuit, num_qubits_backend, coupling_map):
@@ -1212,7 +1329,6 @@ def generate_mapping_ranges_bfs(num_qubits_circuit, num_qubits_backend, coupling
 #                 break  # Stop if we've used up all available qubits
 
 #     return ranges
-
 
 
 # def generate_mapping_ranges(num_qubits_circuit, num_qubits_backend, coupling_map):
@@ -1282,7 +1398,6 @@ def generate_mapping_ranges_bfs(num_qubits_circuit, num_qubits_backend, coupling
 #     return current_range
 
 
-
 ##############
 # VQE utils
 ##############
@@ -1290,68 +1405,78 @@ def generate_mapping_ranges_bfs(num_qubits_circuit, num_qubits_backend, coupling
 from qiskit.circuit import QuantumCircuit, Parameter, ParameterVector
 import numpy as np
 
+
 def construct_qcc_circuit(entanglers: list):
-    '''This function defines the QCC ansatz circuit for VQE. Here we construct exponential blocks using
+    """This function defines the QCC ansatz circuit for VQE. Here we construct exponential blocks using
     entanglers from QMF state as a proof of principle demonstration.
-    
+
     Args:
         entanglers: list storing Pauli words for construction of qcc_circuit.
         backend: statevector, qasm simulator or a real backend.
         truncation: a threshold number to truncate the blocks. Default: None.
     Returns:
         qcc_circuit
-    '''
+    """
     num_blocks = len(entanglers)
     num_blocks = 2
     # print("num blocks = ", num_blocks)
     # p = ParameterVector('p', num_blocks)
-    p = [1.16692654, 0.27223177, -0.93402707, -0.92067998, 0.06852241, -0.42444632, -0.41270851, -0.01068001]
-    
+    p = [
+        1.16692654,
+        0.27223177,
+        -0.93402707,
+        -0.92067998,
+        0.06852241,
+        -0.42444632,
+        -0.41270851,
+        -0.01068001,
+    ]
+
     num_qubits = len(entanglers[0])
     qcc_circuit = QuantumCircuit(num_qubits)
     for i in range(num_blocks):
         circuit = QuantumCircuit(num_qubits)
         key = entanglers[i]
         coupler_map = []
-        
+
         # We first construct coupler_map according to the key.
         for j in range(num_qubits):
-            if key[num_qubits-1-j] != 'I':
+            if key[num_qubits - 1 - j] != "I":
                 coupler_map.append(j)
-                
+
         # Then we construct the circuit.
         if len(coupler_map) == 1:
             # there is no CNOT gate.
             c = coupler_map[0]
-            if key[num_qubits-1-c] == 'X':
+            if key[num_qubits - 1 - c] == "X":
                 circuit.h(c)
                 circuit.rz(p[i], c)
                 circuit.h(c)
-            elif key[num_qubits-1-c] == 'Y':
-                circuit.rx(-np.pi/2, c)
+            elif key[num_qubits - 1 - c] == "Y":
+                circuit.rx(-np.pi / 2, c)
                 circuit.rz(p[i], c)
-                circuit.rx(np.pi/2, c)
-                
+                circuit.rx(np.pi / 2, c)
+
             qcc_circuit += circuit
         else:
             # Here we would need CNOT gate.
             for j in coupler_map:
-                if key[num_qubits-1-j] == 'X':
+                if key[num_qubits - 1 - j] == "X":
                     circuit.h(j)
-                elif key[num_qubits-1-j] == 'Y':
-                    circuit.rx(-np.pi/2, j)
-                    
+                elif key[num_qubits - 1 - j] == "Y":
+                    circuit.rx(-np.pi / 2, j)
+
             for j in range(len(coupler_map) - 1):
-                circuit.cx(coupler_map[j], coupler_map[j+1])
-                
+                circuit.cx(coupler_map[j], coupler_map[j + 1])
+
             param_gate = QuantumCircuit(num_qubits)
             param_gate.rz(p[i], coupler_map[-1])
-            
-            #qcc_circuit += circuit + param_gate + circuit.inverse()
+
+            # qcc_circuit += circuit + param_gate + circuit.inverse()
             qcc_circuit.compose(circuit, inplace=True)
             qcc_circuit.compose(param_gate, inplace=True)
             qcc_circuit.compose(circuit.inverse(), inplace=True)
-    
+
     return qcc_circuit
 
 
@@ -1363,22 +1488,18 @@ def hf_circ(num_qubits, num_checks):
     hf_circuit.x(1)
     hf_circuit.x(2)
     hf_circuit.x(3)
-    
-    entanglers = ['XXIIIIXY', 'IIXXXYII', 'IXXIXIIY', 'XIIXIXYI',
-                  'XXIIXYII', 'IXIXIXIY', 'XIXIXIYI', 'IIXXIIXY']
+
+    entanglers = [
+        "XXIIIIXY",
+        "IIXXXYII",
+        "IXXIXIIY",
+        "XIIXIXYI",
+        "XXIIXYII",
+        "IXIXIXIY",
+        "XIXIXIYI",
+        "IIXXIIXY",
+    ]
 
     parameterized_circuit = hf_circuit.compose(construct_qcc_circuit(entanglers))
-    
-    return parameterized_circuit 
 
-        
-
-
-
-
-
-
-
-
-
-
+    return parameterized_circuit

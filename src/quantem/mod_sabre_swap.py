@@ -12,7 +12,7 @@
 # that they have been altered from the originals.
 #
 # MODIFICATIONS (2025)
-# - Replaced qiskit._accelerate crate with seqc.rust crate.
+# - Replaced qiskit._accelerate crate with quantem.rust crate.
 
 """Routing via SWAP insertion using the SABRE method from Li et al."""
 
@@ -36,7 +36,7 @@ from qiskit.dagcircuit import DAGCircuit, DAGOpNode
 from qiskit.utils import default_num_processes
 
 
-from seqc.rust.sabre import (
+from quantem.rust.sabre import (
     sabre_routing,
     Heuristic,
     SetScaling,

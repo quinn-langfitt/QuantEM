@@ -1,6 +1,6 @@
 from qiskit import QuantumCircuit
-from iceberg_codegen import build_iceberg_circuit
-from utils import convert_to_PCS_circ, convert_to_ancilla_free_PCS_circ
+from quantem.iceberg_codegen import build_iceberg_circuit
+from quantem.utils import convert_to_PCS_circ, convert_to_ancilla_free_PCS_circ
 
 """
 Currently a skeleton for the QED compiler.
@@ -11,9 +11,14 @@ Currently a skeleton for the QED compiler.
 # ---------------------------------------------------------------------------- #
 
 CLIFFORD_NAMES = {
-    "x", "y", "z", "h",
-    "s", "sdg",
-    "cx", "cz",
+    "x",
+    "y",
+    "z",
+    "h",
+    "s",
+    "sdg",
+    "cx",
+    "cz",
     "swap",
 }
 
@@ -24,6 +29,7 @@ DEFAULT_CLIFFORD_THRESHOLD = 0.9
 # Analysis Functions
 # ---------------------------------------------------------------------------- #
 
+
 def percent_clifford(circ: QuantumCircuit) -> float:
     """
     Calculate the fraction of instructions in `circ` whose names are in CLIFFORD_NAMES.
@@ -32,12 +38,15 @@ def percent_clifford(circ: QuantumCircuit) -> float:
     instructions = circ.data
     if not instructions:
         return 0.0
-    count_clifford = sum(1 for instr, *_ in instructions if instr.name in CLIFFORD_NAMES)
+    count_clifford = sum(
+        1 for instr, *_ in instructions if instr.name in CLIFFORD_NAMES
+    )
     return count_clifford / len(instructions)
 
 
-
-def det_QED_strategy(circ: QuantumCircuit, tau: float = DEFAULT_CLIFFORD_THRESHOLD) -> str:
+def det_QED_strategy(
+    circ: QuantumCircuit, tau: float = DEFAULT_CLIFFORD_THRESHOLD
+) -> str:
     """
     Decide which QED strategy to use.
 
@@ -57,34 +66,41 @@ def det_QED_strategy(circ: QuantumCircuit, tau: float = DEFAULT_CLIFFORD_THRESHO
 # Functions for placement
 # ---------------------------------------------------------------------------- #
 
-def place_pcs(circ: QuantumCircuit, layout: dict, gateset: list, n_checks: int = None) -> QuantumCircuit:
+
+def place_pcs(
+    circ: QuantumCircuit, layout: dict, gateset: list, n_checks: int = None
+) -> QuantumCircuit:
     """
     Insert Pauli Check Sandwiching (PCS) into the given circuit.
     """
     if n_checks is None:
         raise ValueError("place_pcs requires n_checks to be set")
     sign_list, qc = convert_to_PCS_circ(
-        circ, circ.num_qubits, n_checks,
-        barriers=True, reverse=False
+        circ, circ.num_qubits, n_checks, barriers=True, reverse=False
     )
     return qc, sign_list
 
 
-def place_afpc(circ: QuantumCircuit, layout: dict, gateset: list, n_checks: int = None) -> QuantumCircuit:
+def place_afpc(
+    circ: QuantumCircuit, layout: dict, gateset: list, n_checks: int = None
+) -> QuantumCircuit:
     """
     Insert Ancilla-Free Pauli Checks (AFPC) into the circuit.
     Similar structure to place_pcs.
     """
     if n_checks is None:
         raise ValueError("place_afpc requires n_checks to be set")
-    sign_list, qc, left_mappings_list, right_mappings_list = convert_to_ancilla_free_PCS_circ(
-        circ, circ.num_qubits, n_checks,
-        barriers=True, reverse=False
+    sign_list, qc, left_mappings_list, right_mappings_list = (
+        convert_to_ancilla_free_PCS_circ(
+            circ, circ.num_qubits, n_checks, barriers=True, reverse=False
+        )
     )
     return qc, sign_list, left_mappings_list, right_mappings_list
 
 
-def place_iceberg(circ: QuantumCircuit, layout: dict, gateset: list, n_checks: int = None) -> QuantumCircuit:
+def place_iceberg(
+    circ: QuantumCircuit, layout: dict, gateset: list, n_checks: int = None
+) -> QuantumCircuit:
     """
     Wrap the logical circuit with Iceberg QED code:
       - Transpile, initialize, map logical->physical, syndrome, readout
@@ -103,21 +119,27 @@ def place_iceberg(circ: QuantumCircuit, layout: dict, gateset: list, n_checks: i
 # Overhead Analysis Fucntions
 # ---------------------------------------------------------------------------- #
 
+
 def pcs_analysis(qed_circ: QuantumCircuit):
     raise NotImplementedError("pcs_analysis not yet implemented")
 
+
 def iceberg_analysis(qed_circ: QuantumCircuit):
     raise NotImplementedError("iceberg_analysis not yet implemented")
+
 
 # ---------------------------------------------------------------------------- #
 # Top-Level Compiler Function
 # ---------------------------------------------------------------------------- #
 
-def det_QED(circ: QuantumCircuit,
-            layout: dict,
-            gateset: list,
-            tau: float = DEFAULT_CLIFFORD_THRESHOLD,
-            n_checks: int = None) -> QuantumCircuit:
+
+def det_QED(
+    circ: QuantumCircuit,
+    layout: dict,
+    gateset: list,
+    tau: float = DEFAULT_CLIFFORD_THRESHOLD,
+    n_checks: int = None,
+) -> QuantumCircuit:
     """
     Top-level QED compiler.
 
