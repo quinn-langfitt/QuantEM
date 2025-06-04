@@ -12,7 +12,7 @@
 # that they have been altered from the originals.
 #
 # MODIFICATIONS (2025)
-# - Replaced qiskit._accelerate crate with seqc.rust crate.
+# - Replaced qiskit._accelerate crate with quantem.rust crate.
 
 """Routing via SWAP insertion using the SABRE method from Li et al."""
 
@@ -33,10 +33,17 @@ from qiskit.transpiler.layout import Layout
 from qiskit.transpiler.target import Target
 from qiskit.transpiler.passes.layout import disjoint_utils
 from qiskit.dagcircuit import DAGCircuit, DAGOpNode
-from qiskit.utils import default_num_processes
+
+# Qiskit 2.0 isn't supported yet
+# from qiskit.utils import default_num_processes
+from qiskit.utils.parallel import CPU_COUNT
 
 
-from seqc.rust.sabre import (
+def default_num_processes() -> int:
+    return CPU_COUNT
+
+
+from quantem.rust.sabre import (
     sabre_routing,
     Heuristic,
     SetScaling,

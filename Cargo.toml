@@ -1,5 +1,5 @@
 [package]
-name = "seqc_rust"
+name = "quantem_rust"
 edition = "2021"
 rust-version = "1.79"  # Keep in sync with README.md and rust-toolchain.toml.
 license = "Apache-2.0"

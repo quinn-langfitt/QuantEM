@@ -31,7 +31,7 @@ use qiskit_accelerate::nlayout::PhysicalQubit;
 ///
 /// and used solely to represent neighbors of each node in qiskit-terra's rust
 /// module.
-#[pyclass(module = "seqc.rust.sabre")]
+#[pyclass(module = "quantem.rust.sabre")]
 #[derive(Clone, Debug)]
 pub struct NeighborTable {
     // The choice of 4 `PhysicalQubit`s in the stack-allocated region is because a) this causes the

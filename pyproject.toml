@@ -3,14 +3,29 @@ requires = ["setuptools", "setuptools-rust"]
 build-backend = "setuptools.build_meta"
 
 [project]
-name = "seqc"
+name = "quantem"
 dynamic = ["version"] # "dependencies"
 dependencies = [
-    "qiskit>=2.0"
+    "qiskit<2.0",
+    "qiskit_addon_utils",
+    "mapomatic",
+    "numpy",
+    "rustworkx",
+    "networkx"
+]
+
+[project.optional-dependencies]
+notebook = [
+    "ipykernel",
+    "pylatexenc",
+    "matplotlib",
+    "qiskit-aer",
+    "qiskit_ibm_runtime",
+    "seaborn",
 ]
 
 [[tool.setuptools-rust.ext-modules]]
-target = "seqc.rust" # The last part of the name (e.g. "_lib") has to match lib.name in Cargo.toml,
+target = "quantem.rust" # The last part of the name (e.g. "_lib") has to match lib.name in Cargo.toml,
 # See reference for RustExtension in https://setuptools-rust.readthedocs.io/en/latest/reference.html
 
 [project.scripts]

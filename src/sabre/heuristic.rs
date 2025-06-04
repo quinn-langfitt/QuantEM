@@ -20,7 +20,7 @@ use qiskit_circuit::impl_intopyobject_for_copy_pyclass;
 
 /// Affect the dynamic scaling of the weight of node-set-based heuristics (basic and lookahead).
 #[pyclass]
-#[pyo3(module = "seqc.rust.sabre", frozen, eq)]
+#[pyo3(module = "quantem.rust.sabre", frozen, eq)]
 #[derive(Clone, Copy, PartialEq, Eq)]
 pub enum SetScaling {
     /// No dynamic scaling of the weight.
@@ -48,7 +48,7 @@ impl SetScaling {
 /// Define the characteristics of the basic heuristic.  This is a simple sum of the physical
 /// distances of every gate in the front layer.
 #[pyclass]
-#[pyo3(module = "seqc.rust.sabre", frozen)]
+#[pyo3(module = "quantem.rust.sabre", frozen)]
 #[derive(Clone, Copy, PartialEq)]
 pub struct BasicHeuristic {
     /// The relative weighting of this heuristic to others.  Typically you should just set this to
@@ -88,7 +88,7 @@ impl BasicHeuristic {
 /// Define the characteristics of the lookahead heuristic.  This is a sum of the physical distances
 /// of every gate in the lookahead set, which is gates immediately after the front layer.
 #[pyclass]
-#[pyo3(module = "seqc.rust.sabre", frozen)]
+#[pyo3(module = "quantem.rust.sabre", frozen)]
 #[derive(Clone, Copy, PartialEq)]
 pub struct LookaheadHeuristic {
     /// The relative weight of this heuristic.  Typically this is defined relative to the
@@ -136,7 +136,7 @@ impl LookaheadHeuristic {
 /// the qubit is involved in a swap.  The final heuristic is calculated by multiplying all other
 /// components by the maximum multiplier involved in a given swap.
 #[pyclass]
-#[pyo3(module = "seqc.rust.sabre", frozen)]
+#[pyo3(module = "quantem.rust.sabre", frozen)]
 #[derive(Clone, Copy, PartialEq)]
 pub struct DecayHeuristic {
     /// The amount to add onto the multiplier of a physical qubit when it is used.
@@ -175,7 +175,7 @@ impl DecayHeuristic {
 /// A complete description of the heuristic that Sabre will use.  See the individual elements for a
 /// greater description.
 #[pyclass]
-#[pyo3(module = "seqc.rust.sabre", frozen)]
+#[pyo3(module = "quantem.rust.sabre", frozen)]
 #[derive(Clone, PartialEq)]
 pub struct Heuristic {
     pub basic: Option<BasicHeuristic>,
