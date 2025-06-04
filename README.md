@@ -25,5 +25,5 @@ pip install .[notebook]
 + **Pauli Check Sandwiching, PCS**: PCS is technique used to detect and mitigate errors. PCS surrounds a payload circuit, $𝑈$ , with controlled Pauli operator checks that are selected such that $RUL = 𝑈$ . Errors on $𝑈$ can be detected
 on an ancilla through phase kickback. The errors that are detected in $U$ anticommute with the Pauli operators in the selected checks.
 + **Ancilla-free Pauli Checks, AFPC**: AFPC does not include an ancilla that is measured for syndrome information. Instead, syndrome information is read out directly from the qubit targeted by Pauli checks. AFPC is effective for application-specific error characterization.
-+ **Pauli Check Extrapolation, PCE** ((*Coming Soon*))
++ **Pauli Check Extrapolation, PCE** (*Coming Soon*)
 + **Iceberg Code** (*Coming Soon*)
