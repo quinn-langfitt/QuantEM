@@ -6,9 +6,22 @@ build-backend = "setuptools.build_meta"
 name = "quantem"
 dynamic = ["version"] # "dependencies"
 dependencies = [
-    "qiskit>=2.0",
+    "qiskit<2.0",
+    "qiskit_addon_utils",
+    "mapomatic",
     "numpy",
     "rustworkx",
+    "networkx"
+]
+
+[project.optional-dependencies]
+notebook = [
+    "ipykernel",
+    "pylatexenc",
+    "matplotlib",
+    "qiskit-aer",
+    "qiskit_ibm_runtime",
+    "seaborn",
 ]
 
 [[tool.setuptools-rust.ext-modules]]

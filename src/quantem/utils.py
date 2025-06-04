@@ -19,7 +19,7 @@ from qiskit.transpiler import PassManager
 # Automatic check injection utils.
 ###################################
 
-from pauli_checks import *
+from quantem.pauli_checks import *
 
 
 def check_to_ancilla_free_circ(check_str, num_qubits):
