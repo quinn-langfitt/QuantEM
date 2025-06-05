@@ -1,6 +1,13 @@
-from qiskit import QuantumCircuit
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from quantem.iceberg_codegen import build_iceberg_circuit
 from quantem.utils import convert_to_PCS_circ, convert_to_ancilla_free_PCS_circ
+
+if TYPE_CHECKING:
+    from typing import Mapping, Sequence
+    from qiskit import QuantumCircuit
 
 """
 Currently a skeleton for the QED compiler.
@@ -68,7 +75,7 @@ def det_QED_strategy(
 
 
 def place_pcs(
-    circ: QuantumCircuit, layout: dict, gateset: list, n_checks: int = None
+    circ: QuantumCircuit, layout: Mapping, gateset: Sequence, n_checks: int = None
 ) -> QuantumCircuit:
     """
     Insert Pauli Check Sandwiching (PCS) into the given circuit.
@@ -82,7 +89,7 @@ def place_pcs(
 
 
 def place_afpc(
-    circ: QuantumCircuit, layout: dict, gateset: list, n_checks: int = None
+    circ: QuantumCircuit, layout: Mapping, gateset: Sequence, n_checks: int = None
 ) -> QuantumCircuit:
     """
     Insert Ancilla-Free Pauli Checks (AFPC) into the circuit.
@@ -99,7 +106,7 @@ def place_afpc(
 
 
 def place_iceberg(
-    circ: QuantumCircuit, layout: dict, gateset: list, n_checks: int = None
+    circ: QuantumCircuit, layout: Mapping, gateset: Sequence, n_checks: int = None
 ) -> QuantumCircuit:
     """
     Wrap the logical circuit with Iceberg QED code:
@@ -135,8 +142,8 @@ def iceberg_analysis(qed_circ: QuantumCircuit):
 
 def det_QED(
     circ: QuantumCircuit,
-    layout: dict,
-    gateset: list,
+    layout: Mapping,
+    gateset: Sequence,
     tau: float = DEFAULT_CLIFFORD_THRESHOLD,
     n_checks: int = None,
 ) -> QuantumCircuit:

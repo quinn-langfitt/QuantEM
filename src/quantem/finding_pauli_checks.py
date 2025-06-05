@@ -1,7 +1,12 @@
-from qiskit import QuantumCircuit
+from __future__ import annotations
+
+from typing import TYPE_CHECKING
+
 from qiskit.circuit.library import HGate, CXGate, SGate
 
-import numpy as np
+if TYPE_CHECKING:
+    from typing import Iterable
+    from qiskit import QuantumCircuit
 
 
 def cnot_phase(xc, xt, zc, zt):
@@ -14,8 +19,9 @@ def local_phase(x, z):
     return 1 - 2 * x * z
 
 
-def conjugate_pauli_through_gates(circuit, input_phase, pauli_str):
+def conjugate_pauli_through_gates(circuit: QuantumCircuit, input_phase, pauli_str):
     """Transform a Pauli operator through a quantum circuit with exact phase tracking"""
+
     num_qubits = circuit.num_qubits
     x, z = pauli_string_to_components(pauli_str, num_qubits)
     phase = input_phase  # Now tracking as real phase factor
@@ -24,32 +30,34 @@ def conjugate_pauli_through_gates(circuit, input_phase, pauli_str):
         gate = instruction.operation
         qubits = [q.index for q in instruction.qubits]
 
-        if isinstance(gate, HGate):
-            q = qubits[0]
-            # Calculate phase contribution before updating components
-            phase *= local_phase(x[q], z[q])
-            # Swap X and Z components
-            x[q], z[q] = z[q], x[q]
+        match gate:
+            case HGate():
+                q = qubits[0]
+                # Calculate phase contribution before updating components
+                phase *= local_phase(x[q], z[q])
+                # Swap X and Z components
+                x[q], z[q] = z[q], x[q]
 
-        elif isinstance(gate, SGate):
-            q = qubits[0]
-            # Calculate phase contribution before updating components
-            phase *= local_phase(x[q], z[q])
-            # Update Z component
-            z[q] = (x[q] + z[q]) % 2
+            case SGate():
+                q = qubits[0]
+                # Calculate phase contribution before updating components
+                phase *= local_phase(x[q], z[q])
+                # Update Z component
+                z[q] = (x[q] + z[q]) % 2
 
-        elif isinstance(gate, CXGate):
-            c, t = qubits
-            # Calculate CNOT phase contribution before updating components
-            phase *= cnot_phase(x[c], x[t], z[c], z[t])
-            # Update X and Z components
-            x[t] = (x[t] + x[c]) % 2
-            z[c] = (z[c] + z[t]) % 2
+            case CXGate():
+                c, t = qubits
+                # Calculate CNOT phase contribution before updating components
+                phase *= cnot_phase(x[c], x[t], z[c], z[t])
+                # Update X and Z components
+                x[t] = (x[t] + x[c]) % 2
+                z[c] = (z[c] + z[t]) % 2
 
-        else:
-            raise ValueError(f"Unsupported gate: {gate.name}")
+            case _:
+                raise ValueError(f"Unsupported gate: {gate.name}")
 
-    return phase, components_to_pauli_string(x, z)
+    pauli_string = components_to_pauli_string(x, z)
+    return phase, pauli_string
 
 
 def compute_right_pauli_checks(circuit, left_pauli_checks):
@@ -79,20 +87,21 @@ def pauli_string_to_components(pauli_str, num_qubits):
     return x, z
 
 
-def components_to_pauli_string(x, z):
-    return "".join(
-        [
-            (
-                "X"
-                if (x == 1 and z == 0)
-                else "Z" if (x == 0 and z == 1) else "Y" if (x == 1 and z == 1) else "I"
-            )
-            for x, z in zip(x, z)
-        ]
+def components_to_pauli_string(x: Iterable[int], z: Iterable[int]):
+    pauli_string = (
+        (
+            "X"
+            if (x == 1 and z == 0)
+            else "Z" if (x == 0 and z == 1) else "Y" if (x == 1 and z == 1) else "I"
+        )
+        for x, z in zip(x, z)
     )
+    return "".join(pauli_string)
 
 
 if __name__ == "__main__":
+    from qiskit import QuantumCircuit
+
     # Example verification
     qc = QuantumCircuit(6)
     qc.h(0)
