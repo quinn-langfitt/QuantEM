@@ -24,7 +24,6 @@ from quantem.pauli_checks import (
     add_pauli_checks
 )
 
-
 def check_to_ancilla_free_circ(check_str, num_qubits):
     op_str = check_str[2:]
     qc = QuantumCircuit(num_qubits)
