@@ -8,7 +8,7 @@ from typing import Callable
 from collections import defaultdict
 from qiskit.dagcircuit import DAGOutNode, DAGOpNode
 
-from qiskit import *
+from qiskit import transpile
 from typing import List
 from qiskit.converters import circuit_to_dag
 from qiskit.dagcircuit import DAGOpNode
@@ -19,8 +19,10 @@ from qiskit.transpiler import PassManager
 # Automatic check injection utils.
 ###################################
 
-from quantem.pauli_checks import *
-
+from quantem.pauli_checks import (
+    ChecksFinder,
+    add_pauli_checks
+)
 
 def check_to_ancilla_free_circ(check_str, num_qubits):
     op_str = check_str[2:]

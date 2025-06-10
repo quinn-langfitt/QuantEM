@@ -7,8 +7,10 @@ from typing import Any
 from typing import Callable
 from collections import defaultdict
 from qiskit.dagcircuit import DAGOutNode, DAGOpNode
-
-from qiskit import *
+from qiskit import (
+    QuantumCircuit,
+    ClassicalRegister
+)
 from typing import List
 from qiskit.converters import circuit_to_dag
 from qiskit.dagcircuit import DAGOpNode
