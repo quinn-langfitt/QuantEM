@@ -3,7 +3,9 @@ from __future__ import annotations
 from typing import TYPE_CHECKING
 
 from quantem.iceberg_codegen import build_iceberg_circuit
-from quantem.utils import convert_to_PCS_circ, convert_to_ancilla_free_PCS_circ
+from quantem.utils import convert_to_PCS_circ, convert_to_ancilla_free_PCS_circ, find_largest_clifford_block
+
+from qiskit_addon_utils.slicing import slice_by_depth
 
 if TYPE_CHECKING:
     from typing import Mapping, Sequence
@@ -29,7 +31,7 @@ CLIFFORD_NAMES = {
     "swap",
 }
 
-DEFAULT_CLIFFORD_THRESHOLD = 0.9
+DEFAULT_CLIFFORD_THRESHOLD = 0.4
 
 
 # ---------------------------------------------------------------------------- #
@@ -37,18 +39,32 @@ DEFAULT_CLIFFORD_THRESHOLD = 0.9
 # ---------------------------------------------------------------------------- #
 
 
-def percent_clifford(circ: QuantumCircuit) -> float:
+# def percent_clifford(circ: QuantumCircuit) -> float:
+#     """
+#     Calculate the fraction of instructions in `circ` whose names are in CLIFFORD_NAMES.
+#     Returns a float between 0 and 1.
+#     """
+#     instructions = circ.data
+#     if not instructions:
+#         return 0.0
+#     count_clifford = sum(
+#         1 for instr, *_ in instructions if instr.name in CLIFFORD_NAMES
+#     )
+#     return count_clifford / len(instructions)
+
+def largest_clifford_block_fraction(circ: QuantumCircuit) -> float:
     """
-    Calculate the fraction of instructions in `circ` whose names are in CLIFFORD_NAMES.
-    Returns a float between 0 and 1.
+    Compute the fraction of circuit depth occupied by the largest contiguous Clifford-only block.
     """
-    instructions = circ.data
-    if not instructions:
+    slices = slice_by_depth(circ, 1)
+    total_depth = len(slices)
+
+    if total_depth == 0:
         return 0.0
-    count_clifford = sum(
-        1 for instr, *_ in instructions if instr.name in CLIFFORD_NAMES
-    )
-    return count_clifford / len(instructions)
+
+    start, end, block = find_largest_clifford_block(slices)
+    block_depth = len(block)
+    return block_depth / total_depth
 
 
 def det_QED_strategy(
@@ -64,7 +80,7 @@ def det_QED_strategy(
     This function is intentionally modular: swap out or extend
     the decision logic here without touching placement routines.
     """
-    p_cliff = percent_clifford(circ)
+    p_cliff = largest_clifford_block_fraction(circ)
     print(f"[det_QED_strategy] percent_clifford = {p_cliff:.2%}")
     return "PCS" if p_cliff >= tau else "ICEBERG"
 
