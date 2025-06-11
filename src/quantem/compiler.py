@@ -162,6 +162,7 @@ def det_QED(
     gateset: Sequence,
     thres: float = DEFAULT_CLIFFORD_THRESHOLD,
     n_checks: int = None,
+    strategy: str | None = None,
 ) -> QuantumCircuit:
     """
     Top-level QED compiler.
@@ -170,21 +171,25 @@ def det_QED(
         circ: input QuantumCircuit
         layout: qubit layout mapping
         gateset: list of supported gate names/types
-        thres: clifford threshold for PCS
-        n_checks: number of checks for PCS or ICEBERG (algorithm-specific)
+        thres: clifford threshold for PCS (only used if strategy is None)
+        n_checks: number of checks for PCS (required)
+        strategy: explicitly set to "PCS" or "ICEBERG"; if None, strategy is chosen automatically
 
     Returns:
         QuantumCircuit instrumented with error-detection code
     """
     # 1. Choose strategy
-    strategy = det_QED_strategy(circ, thres)
+    if strategy is None:
+        strategy = det_QED_strategy(circ, thres)
+    else:
+        strategy = strategy.upper()
+        if strategy not in {"PCS", "ICEBERG"}:
+            raise ValueError(f"Unknown strategy '{strategy}'. Must be either 'PCS' or 'ICEBERG'.")
 
     # 2. Place error-detection subcircuits
     if strategy == "PCS":
         qed_circ = place_pcs(circ, layout, gateset, n_checks)
-    else:
+    else:  # ICEBERG
         qed_circ = place_iceberg(circ, layout, gateset, n_checks)
-
-    # 3. (Optional) Perform overhead analysis here
 
     return qed_circ
