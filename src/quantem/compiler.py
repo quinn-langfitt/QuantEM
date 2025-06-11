@@ -68,21 +68,21 @@ def largest_clifford_block_fraction(circ: QuantumCircuit) -> float:
 
 
 def det_QED_strategy(
-    circ: QuantumCircuit, tau: float = DEFAULT_CLIFFORD_THRESHOLD
+    circ: QuantumCircuit, thres: float = DEFAULT_CLIFFORD_THRESHOLD
 ) -> str:
     """
     Decide which QED strategy to use.
 
     Current logic:
-      - If percent_clifford(circ) >= tau: use PCS
+      - If largest_clifford_block_fraction(circ) >= thres: use PCS
       - Otherwise: use ICEBERG
 
     This function is intentionally modular: swap out or extend
     the decision logic here without touching placement routines.
     """
     p_cliff = largest_clifford_block_fraction(circ)
-    print(f"[det_QED_strategy] percent_clifford = {p_cliff:.2%}")
-    return "PCS" if p_cliff >= tau else "ICEBERG"
+    print(f"[det_QED_strategy] largest_clifford_block_fraction = {p_cliff:.2%}")
+    return "PCS" if p_cliff >= thres else "ICEBERG"
 
 
 # ---------------------------------------------------------------------------- #
@@ -160,7 +160,7 @@ def det_QED(
     circ: QuantumCircuit,
     layout: Mapping,
     gateset: Sequence,
-    tau: float = DEFAULT_CLIFFORD_THRESHOLD,
+    thres: float = DEFAULT_CLIFFORD_THRESHOLD,
     n_checks: int = None,
 ) -> QuantumCircuit:
     """
@@ -170,14 +170,14 @@ def det_QED(
         circ: input QuantumCircuit
         layout: qubit layout mapping
         gateset: list of supported gate names/types
-        tau: clifford threshold for PCS
+        thres: clifford threshold for PCS
         n_checks: number of checks for PCS or ICEBERG (algorithm-specific)
 
     Returns:
         QuantumCircuit instrumented with error-detection code
     """
     # 1. Choose strategy
-    strategy = det_QED_strategy(circ, tau)
+    strategy = det_QED_strategy(circ, thres)
 
     # 2. Place error-detection subcircuits
     if strategy == "PCS":
@@ -186,6 +186,5 @@ def det_QED(
         qed_circ = place_iceberg(circ, layout, gateset, n_checks)
 
     # 3. (Optional) Perform overhead analysis here
-    #    e.g., count ancilla qubits, measure added gates, etc.
 
     return qed_circ
