@@ -252,55 +252,7 @@ class ChecksFinder:
         elif node.name in ["cx", "swap"]:
             return [dag_qubit_map[node.qargs[0]], dag_qubit_map[node.qargs[1]]]
         else:
-            assert False, "Overlooked a node operation."
-
-    def get_max_checks_linear(self, pauli_labels, max_layers):
-        print('searching...')
-        count=0
-        p2_weights=[]
-        pauli_str_p1s=[]
-        pauli_str_p2s=[]
-        paulis_by_weight=sorted(pauli_labels, key=get_weight, reverse=True)
-        # print(paulis_by_weight)
-        for elem in paulis_by_weight:
-            # temp_p2_circ=find_p2s(elem, circ)
-            if get_weight(elem)>0:
-                checks_result=self.find_checks_sym(elem)
-                if checks_result:
-                    count+=1
-                    self._append_result(checks_result, p2_weights, pauli_str_p1s, pauli_str_p2s)
-                    # Only get this number of layers. This limit (which works for weight one checks)
-                    # comes from the fact that we only need an X and Y C_2 for each compute qubit.
-                    # All the Pauli terms anticommute with X or Y. However, the search may
-                    # pickup an X, Y, and Z for one qubit so we need more.
-                    if count==max_layers:
-                        break
-        return count, p2_weights, pauli_str_p1s, pauli_str_p2s
-
-    def get_min_checks_linear(self, pauli_labels, max_layers):
-        print('searching...')
-        count=0
-        p2_weights=[]
-        pauli_str_p1s=[]
-        pauli_str_p2s=[]
-        paulis_by_weight=sorted(pauli_labels, key=get_weight, reverse=False)
-        # print(paulis_by_weight)
-        for elem in paulis_by_weight:
-            # temp_p2_circ=find_p2s(elem, circ)
-            if get_weight(elem)>0:
-                checks_result=self.find_checks_sym(elem)
-                if checks_result:
-                    count+=1
-                    self._append_result(checks_result, p2_weights, pauli_str_p1s, pauli_str_p2s)
-                    # Only get this number of layers. This limit (which works for weight one checks)
-                    # comes from the fact that we only need an X and Y C_2 for each compute qubit.
-                    # All the Pauli terms anticommute with X or Y. However, the search may
-                    # pickup an X, Y, and Z for one qubit so we need more.
-                    if count==max_layers:
-                        break
-        return count, p2_weights, pauli_str_p1s, pauli_str_p2s
-
-            
+            assert False, "Overlooked a node operation."            
             
 def append_paulis_to_circuit(circuit, pauli_string):
     """
