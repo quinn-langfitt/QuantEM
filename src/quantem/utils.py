@@ -8,7 +8,7 @@ from typing import Callable
 from collections import defaultdict
 from qiskit.dagcircuit import DAGOutNode, DAGOpNode
 
-from qiskit import transpile
+from qiskit import transpile, QuantumCircuit
 from typing import List
 from qiskit.converters import circuit_to_dag
 from qiskit.dagcircuit import DAGOpNode
@@ -538,108 +538,3 @@ def generate_mapping_ranges_bfs(num_qubits_circuit, num_qubits_backend, coupling
     return ranges
 
 
-##############
-# VQE utils
-##############
-
-from qiskit.circuit import QuantumCircuit, Parameter, ParameterVector
-import numpy as np
-
-
-def construct_qcc_circuit(entanglers: list):
-    """This function defines the QCC ansatz circuit for VQE. Here we construct exponential blocks using
-    entanglers from QMF state as a proof of principle demonstration.
-
-    Args:
-        entanglers: list storing Pauli words for construction of qcc_circuit.
-        backend: statevector, qasm simulator or a real backend.
-        truncation: a threshold number to truncate the blocks. Default: None.
-    Returns:
-        qcc_circuit
-    """
-    num_blocks = len(entanglers)
-    num_blocks = 2
-    # print("num blocks = ", num_blocks)
-    # p = ParameterVector('p', num_blocks)
-    p = [
-        1.16692654,
-        0.27223177,
-        -0.93402707,
-        -0.92067998,
-        0.06852241,
-        -0.42444632,
-        -0.41270851,
-        -0.01068001,
-    ]
-
-    num_qubits = len(entanglers[0])
-    qcc_circuit = QuantumCircuit(num_qubits)
-    for i in range(num_blocks):
-        circuit = QuantumCircuit(num_qubits)
-        key = entanglers[i]
-        coupler_map = []
-
-        # We first construct coupler_map according to the key.
-        for j in range(num_qubits):
-            if key[num_qubits - 1 - j] != "I":
-                coupler_map.append(j)
-
-        # Then we construct the circuit.
-        if len(coupler_map) == 1:
-            # there is no CNOT gate.
-            c = coupler_map[0]
-            if key[num_qubits - 1 - c] == "X":
-                circuit.h(c)
-                circuit.rz(p[i], c)
-                circuit.h(c)
-            elif key[num_qubits - 1 - c] == "Y":
-                circuit.rx(-np.pi / 2, c)
-                circuit.rz(p[i], c)
-                circuit.rx(np.pi / 2, c)
-
-            qcc_circuit += circuit
-        else:
-            # Here we would need CNOT gate.
-            for j in coupler_map:
-                if key[num_qubits - 1 - j] == "X":
-                    circuit.h(j)
-                elif key[num_qubits - 1 - j] == "Y":
-                    circuit.rx(-np.pi / 2, j)
-
-            for j in range(len(coupler_map) - 1):
-                circuit.cx(coupler_map[j], coupler_map[j + 1])
-
-            param_gate = QuantumCircuit(num_qubits)
-            param_gate.rz(p[i], coupler_map[-1])
-
-            # qcc_circuit += circuit + param_gate + circuit.inverse()
-            qcc_circuit.compose(circuit, inplace=True)
-            qcc_circuit.compose(param_gate, inplace=True)
-            qcc_circuit.compose(circuit.inverse(), inplace=True)
-
-    return qcc_circuit
-
-
-def hf_circ(num_qubits, num_checks):
-    total_qubits = num_qubits + num_checks
-    hf_circuit = QuantumCircuit(total_qubits)
-
-    hf_circuit.x(0)
-    hf_circuit.x(1)
-    hf_circuit.x(2)
-    hf_circuit.x(3)
-
-    entanglers = [
-        "XXIIIIXY",
-        "IIXXXYII",
-        "IXXIXIIY",
-        "XIIXIXYI",
-        "XXIIXYII",
-        "IXIXIXIY",
-        "XIXIXIYI",
-        "IIXXIIXY",
-    ]
-
-    parameterized_circuit = hf_circuit.compose(construct_qcc_circuit(entanglers))
-
-    return parameterized_circuit
