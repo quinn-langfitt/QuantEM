@@ -1,28 +1,45 @@
-import qiskit
 import itertools
 import pickle
 import math
-from qiskit.transpiler.basepasses import TransformationPass, AnalysisPass
+from qiskit.transpiler.basepasses import (
+    TransformationPass, 
+    AnalysisPass
+)
 from typing import Any
 from typing import Callable
 from collections import defaultdict
-from qiskit.dagcircuit import DAGOutNode, DAGOpNode
+from qiskit.dagcircuit import (
+    DAGOutNode, 
+    DAGOpNode
+)
 
-from qiskit import transpile, QuantumCircuit
+from qiskit import (
+    transpile, 
+    QuantumCircuit
+)
 from typing import List
 from qiskit.converters import circuit_to_dag
-from qiskit.dagcircuit import DAGOpNode
 from qiskit.transpiler import PassManager
 
+from qiskit_addon_utils.slicing import slice_by_depth, combine_slices
+from qiskit.transpiler.passes import RemoveBarriers
 
-###################################
-# Automatic check injection utils.
-###################################
+import mapomatic as mm
+from networkx import Graph
+from networkx.algorithms.approximation.clique import maximum_independent_set
+from itertools import combinations
+
+from collections import deque
 
 from quantem.pauli_checks import (
     ChecksFinder,
     add_pauli_checks
 )
+
+###################################
+# Automatic check injection utils.
+###################################
+
 
 def check_to_ancilla_free_circ(check_str, num_qubits):
     op_str = check_str[2:]
@@ -44,8 +61,6 @@ def check_to_ancilla_free_circ(check_str, num_qubits):
 def convert_to_ancilla_free_PCS_circ(
     circ, num_qubits, num_checks, barriers=False, reverse=False
 ):
-    import itertools
-    from qiskit import QuantumCircuit
 
     characters = ["I", "X", "Z"]
     candidate_strings = [
@@ -350,10 +365,6 @@ def is_clifford_gate(gate_name):
     return gate_name.lower() in clifford_set
 
 
-from qiskit_addon_utils.slicing import slice_by_depth, combine_slices
-from qiskit.transpiler.passes import RemoveBarriers
-
-
 def expand_circuit(circ, target_num_qubits):
     """
     Expands the given circuit 'circ' so that it has 'target_num_qubits' total qubits.
@@ -433,11 +444,6 @@ def convert_to_PCS_circ_largest_clifford(circ, num_qubits, num_checks):
 # mapping utils that implement VF2 from mapomatic: https://github.com/qiskit-community/mapomatic
 #################################################################################################
 
-import mapomatic as mm
-from networkx import Graph
-from networkx.algorithms.approximation.clique import maximum_independent_set
-from itertools import combinations
-
 
 def find_nonoverlapping_layouts(layouts):
     used = set()
@@ -467,9 +473,6 @@ def get_VF2_layouts(qc, backend):
 ##################################################################################################################
 # mapping utils that simply partition the chip into connected regions; doesn't take any input from circuit
 ##################################################################################################################
-
-
-from collections import deque
 
 
 def build_graph(coupling_map):
