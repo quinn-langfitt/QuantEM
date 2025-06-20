@@ -33,6 +33,8 @@ from qiskit.transpiler.layout import Layout
 from qiskit.transpiler.target import Target
 from qiskit.transpiler.passes.layout import disjoint_utils
 from qiskit.dagcircuit import DAGCircuit, DAGOpNode
+from qiskit.converters import circuit_to_dag
+
 
 # Qiskit 2.0 isn't supported yet
 # from qiskit.utils import default_num_processes
@@ -316,8 +318,6 @@ class SabreSwap(TransformationPass):
 
 
 def _build_sabre_dag(dag, num_physical_qubits, qubit_indices):
-    from qiskit.converters import circuit_to_dag
-
     # Maps id(block): circuit_to_dag(block) for all descendant blocks
     circuit_to_dag_dict = {}
 
