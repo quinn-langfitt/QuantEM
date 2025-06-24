@@ -1,20 +1,13 @@
-import qiskit
-import itertools
 import pickle
-import math
-from qiskit.transpiler.basepasses import TransformationPass, AnalysisPass
-from typing import Any
-from typing import Callable
+from qiskit.transpiler.basepasses import AnalysisPass
 from collections import defaultdict
-from qiskit.dagcircuit import DAGOutNode, DAGOpNode
+from qiskit.dagcircuit import DAGOpNode
 from qiskit import (
     QuantumCircuit,
     ClassicalRegister
 )
 from typing import List
 from qiskit.converters import circuit_to_dag
-from qiskit.dagcircuit import DAGOpNode
-from qiskit.transpiler import PassManager
 
 from qiskit.quantum_info import Operator
 
@@ -300,41 +293,6 @@ def verify_circuit_with_pauli_checks(circuit, left_check, right_check):
 
     return verification_circuit, original_operator.equiv(verification_operator)
 
-# def add_pauli_checks(circuit, left_check, right_check, initial_layout, final_layout, single_side = False, qubit_measure = False, ancilla_measure = False, barriers = False):
-#     #initial_layout: mapping from original circuit index to the physical qubit index
-#     #final_layout: mapping from original circuit index to the final physical qubit index
-#     if initial_layout is None:
-#         #Number of qubits in circuit and checks must be equal.
-#         assert len(circuit.qubits) == len(left_check) == len(right_check)
-#         #First verify the paulis are correct:
-#         verification_circuit, equal = verify_circuit_with_pauli_checks(circuit, left_check, right_check)
-#         assert(equal)
-#     ancilla_index = len(circuit.qubits)
-#     check_circuit = QuantumCircuit(ancilla_index + 1)
-#     check_circuit.h(ancilla_index)
-#     append_control_paulis_to_circuit(check_circuit, left_check, ancilla_index, initial_layout)
-#     if barriers is True:
-#         check_circuit.barrier()
-#     check_circuit.compose(circuit, inplace=True)
-#     if barriers is True:
-#         check_circuit.barrier()
-#     if single_side is False:
-#         append_control_paulis_to_circuit(check_circuit, right_check, ancilla_index, final_layout)
-#     check_circuit.h(ancilla_index)
-    
-#     if ancilla_measure is True:
-#         #add one measurement for the ancilla measurement
-#         ancilla_cr = ClassicalRegister(1, str(right_check))
-#         check_circuit.add_register(ancilla_cr)
-#         check_circuit.measure(ancilla_index, ancilla_cr[0])
-        
-#     if qubit_measure is True:
-#         meas_cr = ClassicalRegister(len(left_check), "meas")
-#         check_circuit.add_register(meas_cr)
-#         for i in range(0, len(left_check)):
-#             check_circuit.measure(final_layout[i], meas_cr[i])
-#     return check_circuit
-
 
 def add_pauli_checks(circuit, left_check, right_check, initial_layout, final_layout, pauli_meas = False, single_side = False, qubit_measure = False, ancilla_measure = False, barriers = False, increase_size = 0):
     #initial_layout: mapping from original circuit index to the physical qubit index
@@ -343,7 +301,7 @@ def add_pauli_checks(circuit, left_check, right_check, initial_layout, final_lay
         #Number of qubits in circuit and checks must be equal.
         assert len(circuit.qubits) == len(left_check) == len(right_check)
         #First verify the paulis are correct:
-        verification_circuit, equal = verify_circuit_with_pauli_checks(circuit, left_check, right_check)
+        _, equal = verify_circuit_with_pauli_checks(circuit, left_check, right_check)
         assert(equal)
     ancilla_index = len(circuit.qubits)
     if increase_size > 0:
@@ -420,44 +378,6 @@ class SavePropertySet(AnalysisPass):
         f = open(self.file_name + '.pkl', 'wb')
         pickle.dump(self.property_set, f)
         f.close()
-        
-def gen_initial_layout(orign_qc, mapped_qc):
-    initial_layout = {}
-    for i in range(0, len(orign_qc.qubits)):
-        initial_layout[i] = mapped_qc.layout.initial_layout.get_virtual_bits()[orign_qc.qubits[i]]
-    return initial_layout
-
-def gen_final_layout(orign_qc, mapped_qc):
-    final_layout = {}
-    pm = PassManager(IdentifyOutputMapping())
-    pm.append(SavePropertySet("property_set"))
-    new_circ = pm.run(mapped_qc)
-    with open('property_set.pkl', 'rb') as f:
-        p_set = pickle.load(f)
-    print(p_set['output_mapping'])
-    for i in range(0, len(orign_qc.qubits)):
-        qubit = orign_qc.qubits[i]
-        final_layout[i] = p_set['output_mapping'][i].index
-    return final_layout
-
-# def filter_results(dictionary, qubits, indexes, sign_list):
-#     new_dict = {}
-#     for key in dictionary.keys():
-#         new_key = ''
-#         for i in range(len(key)):
-#             meas_index = math.floor((i - qubits)/2)
-# #             print(i, meas_index)
-# #             print(meas_index in indexes)
-#             if meas_index in indexes and key[i] == sign_list[meas_index]:
-#                 #the key equals the sign
-# #                 print("not found")
-#                 new_key = ''
-#                 break
-#             if meas_index not in indexes:
-#                 new_key += key[i]
-#         if new_key != '':
-#             new_dict[new_key] = dictionary[key]
-#     return new_dict
     
 def update_cnot_dist(input_dict, ctrl_index, targ_index):
     output_dict = {}
@@ -486,35 +406,8 @@ def single_side_postprocess(input_dict, right_checks, qubits, layer_index):
             #change the corresponding qubit in the distribution
     return output_dict
 
-def complete_postprocess(input_dist, qubits, check_count, pr_list):
-    output_dict = input_dist
-    for i in range(0, check_count):
-        output_dict = single_side_postprocess(output_dict, right_checks = pr_list[i], qubits = qubits, layer_index = i)
-    return output_dict   
-
-def rightchecks_postprocess(input_dist, qubits, check_count, pr_list):
-    output_dict = input_dist
-    for i in range(0, check_count):
-        output_dict = single_side_postprocess(output_dict, right_checks = pr_list[i], qubits = qubits, layer_index = i)
-    return output_dict   
-
-
-
-#compose have problem for inplace measurements, because one qubit can't be measured by two classical bits
-def add_meas_pauli_checks(circuit, left_checks, initial_layout, final_layout, barriers, common_pauli_idxs, barrier = False):
-
-    check_circuit = QuantumCircuit(len(circuit.qubits))
-    append_meas_paulis_strings_to_circuit(check_circuit, left_checks, initial_layout, common_pauli_idxs, barrier)
-    check_circuit.compose(circuit, inplace=True)
-    meas_cr = ClassicalRegister(len(left_checks[0]), "meas")
-    check_circuit.add_register(meas_cr)
-    for i in range(0, len(left_checks[0])):
-        check_circuit.measure(final_layout[i], meas_cr[i])
-    return check_circuit
-
 def calc_common_index(string_1, string_2):
     common_indexes = []
-    new_string = []
     for i in range(0, len(string_1)):
         if string_1[i] == string_2[i] and string_1[i] != 'I':
             common_indexes.append(i)
@@ -547,21 +440,6 @@ def append_meas_paulis_strings_to_circuit(circuit, pauli_strings, mapping, commo
         for idx in range(0, len(meas_indexes)):
             if meas_indexes[idx] != mapping[common_pauli_idxs[pauli_index]]:
                 circuit.cx(meas_indexes[idx], mapping[common_pauli_idxs[pauli_index]])        
-#         if pauli_index == 0:
-#             #apply a chain of CNOTs
-#             for idx in range(0, len(meas_indexes) - 1):
-#                 circuit.cx(meas_indexes[idx],meas_indexes[idx + 1])
-#         else:
-#             #compare with the previous pauli:
-#             prev_pauli = pauli_strings[pauli_index - 1]
-#             common_indexes = calc_common_index(prev_pauli[::-1], pauli[::-1])
-#             common_meas_indexes = [mapping[i] for i in common_indexes]
-#             print("prev common idx", common_indexes, meas_indexes, common_meas_indexes, meas_indexes)
-#             new_meas_indexes =  common_meas_indexes + [i for i in meas_indexes if i not in common_meas_indexes]
-# #             print(new_meas_indexes)
-#             #apply a chain of CNOTs
-#             for idx in range(0, len(new_meas_indexes) - 1):
-#                 circuit.cx(new_meas_indexes[idx],new_meas_indexes[idx + 1])
 
         #One measurement
 #         circuit.measure(meas_indexes[-1], ancilla_cr[0])
@@ -570,27 +448,7 @@ def append_meas_paulis_strings_to_circuit(circuit, pauli_strings, mapping, commo
         for idx in range(len(meas_indexes) - 1, -1,  -1):
             if meas_indexes[idx] != mapping[common_pauli_idxs[pauli_index]]:
                 circuit.cx(meas_indexes[idx], mapping[common_pauli_idxs[pauli_index]])  
-#         if pauli_index == len(pauli_strings) - 1:
-#             #apply a chain of CNOTs
-#             for idx in range(len(meas_indexes) - 2, -1,  -1):
-#                 circuit.cx(meas_indexes[idx],meas_indexes[idx + 1])
-#         else:
-#             #compare with the next pauli:
-#             next_pauli = pauli_strings[pauli_index + 1]
-#             common_indexes = calc_common_index(pauli[::-1], next_pauli[::-1])
-#             common_meas_indexes = [mapping[i] for i in common_indexes]
-#             print("next common idx", common_indexes, meas_indexes, common_meas_indexes, meas_indexes)
-#             new_meas_indexes =  common_meas_indexes + [i for i in meas_indexes if i not in common_meas_indexes]
-#             #apply a chain of CNOTs
-#             for idx in range(len(new_meas_indexes) - 2, -1,  -1):
-#                 circuit.cx(new_meas_indexes[idx],new_meas_indexes[idx + 1])
-#             for idx in range(0, len(new_meas_indexes) - 1):
-#                 circuit.cx(new_meas_indexes[idx],new_meas_indexes[idx + 1])
-                
-#         #Then apply a chain of CNOTs?
-#         for idx in range(len(meas_indexes) - 2, -1,  -1):
-#             print(meas_indexes, idx)
-#             circuit.cx(meas_indexes[idx],meas_indexes[idx + 1])
+
         #add Rotations
         for orign_index, char in enumerate(reversed(pauli)):
             index = mapping[orign_index]
@@ -605,7 +463,6 @@ def append_meas_paulis_strings_to_circuit(circuit, pauli_strings, mapping, commo
                 
 def calc_common(string_1, string_2):
     count = 0
-    new_string = []
     for i in range(0, len(string_1)):
         if string_1[i] == string_2[i] and string_1[i] != 'I':
             count += 1
@@ -632,43 +489,6 @@ def remove_pauli(pauli, sorted_list):
         if i[0][2:] != pauli:
             output_list.append(i)
     return output_list
-    
-def search_for_pauli_list(init_pauli, sorted_list):
-    output_paulis = []
-    output_paulis_sign = []
-    indexed_list = []
-    for index in range(0, len(sorted_list)):
-        temp_list = sorted_list[index].copy()
-        temp_list.append(index)
-        if temp_list[0][2:] != init_pauli:
-            indexed_list.append(temp_list)
-        else:
-            output_paulis.append([temp_list[0][2:], temp_list[1][2:]])
-            output_paulis_sign.append([temp_list[0], temp_list[1]])
-#     print(indexed_list)
-    curr_pauli = init_pauli
-    while len(indexed_list) > 0:
-        print(indexed_list)
-        max_val, best_id = find_largest_common(curr_pauli, indexed_list)
-        del_pauli = indexed_list[best_id][0][2:]
-        output_paulis.append([del_pauli, indexed_list[best_id][1][2:]])
-        output_paulis_sign.append([indexed_list[best_id][0], indexed_list[best_id][1]])
-        indexed_list = remove_pauli(del_pauli, indexed_list)
-        curr_pauli = del_pauli
-    return output_paulis, output_paulis_sign
-
-
-#compose have problem for inplace measurements, because one qubit can't be measured by two classical bits
-def add_linear_meas_pauli_checks(circuit, left_checks, initial_layout, final_layout, barriers, common_pauli_idxs, barrier = False):
-
-    check_circuit = QuantumCircuit(len(circuit.qubits))
-    append_linear_meas_paulis_strings_to_circuit(check_circuit, left_checks, initial_layout, common_pauli_idxs, barrier)
-    check_circuit.compose(circuit, inplace=True)
-    meas_cr = ClassicalRegister(len(left_checks[0]), "meas")
-    check_circuit.add_register(meas_cr)
-    for i in range(0, len(left_checks[0])):
-        check_circuit.measure(final_layout[i], meas_cr[i])
-    return check_circuit
 
 def append_linear_meas_paulis_strings_to_circuit(circuit, pauli_strings, mapping, common_pauli_idxs, barrier):
     """
@@ -695,42 +515,7 @@ def append_linear_meas_paulis_strings_to_circuit(circuit, pauli_strings, mapping
                 meas_indexes.append(index)
         for idx in range(0, len(meas_indexes) - 1):
             # if meas_indexes[idx] != mapping[common_pauli_idxs[pauli_index]]:
-                circuit.cx(meas_indexes[idx], meas_indexes[idx + 1])        
-#         if pauli_index == 0:
-#             #apply a chain of CNOTs
-#             for idx in range(0, len(meas_indexes) - 1):
-#                 circuit.cx(meas_indexes[idx],meas_indexes[idx + 1])
-#         else:
-#             #compare with the previous pauli:
-#             prev_pauli = pauli_strings[pauli_index - 1]
-#             common_indexes = calc_common_index(prev_pauli[::-1], pauli[::-1])
-#             common_meas_indexes = [mapping[i] for i in common_indexes]
-#             print("prev common idx", common_indexes, meas_indexes, common_meas_indexes, meas_indexes)
-#             new_meas_indexes =  common_meas_indexes + [i for i in meas_indexes if i not in common_meas_indexes]
-# #             print(new_meas_indexes)
-#             #apply a chain of CNOTs
-#             for idx in range(0, len(new_meas_indexes) - 1):
-#                 circuit.cx(new_meas_indexes[idx],new_meas_indexes[idx + 1])
-
-
-    
-        # prev_pauli = None
-        # common_prev_indexes = []
-        # post_pauli = None
-        # common_post_indexes = []
-        # if pauli_index != 0:
-        #     prev_pauli = pauli_strings[pauli_index - 1]
-        #     common_prev_indexes = calc_common_index(prev_pauli[::-1], pauli[::-1])
-        #     common_prev_meas_indexes = [mapping[i] for i in common_prev_indexes]
-        #     print("prev common idx", common_prev_indexes, common_prev_meas_indexes)
-        # if pauli_index != len(pauli_strings):
-        #     post_pauli = pauli_strings[pauli_index - 1]
-        #     common_post_indexes = calc_common_index(post_pauli[::-1], pauli[::-1])
-        #     common_post_meas_indexes = [mapping[i] for i in common_post_indexes]
-        #     print("post common idx", common_prev_indexes, common_post_meas_indexes)
-            
-            
-            
+            circuit.cx(meas_indexes[idx], meas_indexes[idx + 1])        
 
         #One measurement
 #         circuit.measure(meas_indexes[-1], ancilla_cr[0])
@@ -738,31 +523,7 @@ def append_linear_meas_paulis_strings_to_circuit(circuit, pauli_strings, mapping
 
         for idx in range(len(meas_indexes) - 2, -1,  -1):
             circuit.cx(meas_indexes[idx],meas_indexes[idx + 1])
-        # for idx in range(len(meas_indexes) - 1, -1,  -1):
-        #     if meas_indexes[idx] != mapping[common_pauli_idxs[pauli_index]]:
-        #         circuit.cx(meas_indexes[idx], mapping[common_pauli_idxs[pauli_index]])  
         
-#         if pauli_index == len(pauli_strings) - 1:
-#             #apply a chain of CNOTs
-#             for idx in range(len(meas_indexes) - 2, -1,  -1):
-#                 circuit.cx(meas_indexes[idx],meas_indexes[idx + 1])
-#         else:
-#             #compare with the next pauli:
-#             next_pauli = pauli_strings[pauli_index + 1]
-#             common_indexes = calc_common_index(pauli[::-1], next_pauli[::-1])
-#             common_meas_indexes = [mapping[i] for i in common_indexes]
-#             print("next common idx", common_indexes, meas_indexes, common_meas_indexes, meas_indexes)
-#             new_meas_indexes =  common_meas_indexes + [i for i in meas_indexes if i not in common_meas_indexes]
-#             #apply a chain of CNOTs
-#             for idx in range(len(new_meas_indexes) - 2, -1,  -1):
-#                 circuit.cx(new_meas_indexes[idx],new_meas_indexes[idx + 1])
-#             for idx in range(0, len(new_meas_indexes) - 1):
-#                 circuit.cx(new_meas_indexes[idx],new_meas_indexes[idx + 1])
-                
-#         #Then apply a chain of CNOTs?
-#         for idx in range(len(meas_indexes) - 2, -1,  -1):
-#             print(meas_indexes, idx)
-#             circuit.cx(meas_indexes[idx],meas_indexes[idx + 1])
         #add Rotations
         for orign_index, char in enumerate(reversed(pauli)):
             index = mapping[orign_index]
@@ -773,212 +534,6 @@ def append_linear_meas_paulis_strings_to_circuit(circuit, pauli_strings, mapping
                 circuit.s(index)  
         if barrier is True:
             circuit.barrier()
-
-
-#compose have problem for inplace measurements, because one qubit can't be measured by two classical bits
-def add_linear_opt_meas_pauli_checks(circuit, left_checks, initial_layout, final_layout, barriers, common_pauli_idxs, barrier = False):
-
-    check_circuit = QuantumCircuit(len(circuit.qubits))
-    append_linear_opt_meas_paulis_strings_to_circuit(check_circuit, left_checks, initial_layout, common_pauli_idxs, barrier)
-    check_circuit.compose(circuit, inplace=True)
-    meas_cr = ClassicalRegister(len(left_checks[0]), "meas")
-    check_circuit.add_register(meas_cr)
-    for i in range(0, len(left_checks[0])):
-        check_circuit.measure(final_layout[i], meas_cr[i])
-    return check_circuit
-
-def append_linear_opt_meas_paulis_strings_to_circuit(circuit, pauli_strings, mapping, common_pauli_idxs, barrier):
-    """
-    Appends Pauli measurements to the quantum circuit based on the pauli_string input.
-    """
-    shared_pauli_idxs = []
-    for pauli_index in range(0, len(pauli_strings)):
-        pauli = pauli_strings[pauli_index]
-        #add classical registers
-        ancilla_cr = ClassicalRegister(1, str(pauli))
-        circuit.add_register(ancilla_cr)
-        
-        meas_indexes = []
-        #add Rotations
-        for orign_index, char in enumerate(reversed(pauli)):
-            index = mapping[orign_index]
-            if char == 'X':
-                circuit.h(index)
-                meas_indexes.append(index)
-            elif char == 'Y':
-                circuit.sdg(index)
-                circuit.h(index)
-                meas_indexes.append(index)
-            elif char == 'Z':
-                meas_indexes.append(index)
-        # for idx in range(0, len(meas_indexes) - 1):
-        #     # if meas_indexes[idx] != mapping[common_pauli_idxs[pauli_index]]:
-        #         circuit.cx(meas_indexes[idx], meas_indexes[idx + 1])        
-#         if pauli_index == 0:
-#             #apply a chain of CNOTs
-#             for idx in range(0, len(meas_indexes) - 1):
-#                 circuit.cx(meas_indexes[idx],meas_indexes[idx + 1])
-#         else:
-#             #compare with the previous pauli:
-#             prev_pauli = pauli_strings[pauli_index - 1]
-#             common_indexes = calc_common_index(prev_pauli[::-1], pauli[::-1])
-#             common_meas_indexes = [mapping[i] for i in common_indexes]
-#             print("prev common idx", common_indexes, meas_indexes, common_meas_indexes, meas_indexes)
-#             new_meas_indexes =  common_meas_indexes + [i for i in meas_indexes if i not in common_meas_indexes]
-# #             print(new_meas_indexes)
-#             #apply a chain of CNOTs
-#             for idx in range(0, len(new_meas_indexes) - 1):
-#                 circuit.cx(new_meas_indexes[idx],new_meas_indexes[idx + 1])
-
-
-    
-        prev_pauli = None
-        common_prev_indexes = []
-        post_pauli = None
-        common_post_indexes = []
-        if pauli_index != 0:
-            prev_pauli = pauli_strings[pauli_index - 1]
-            common_prev_indexes = calc_common_index(prev_pauli[::-1], pauli[::-1])
-        if pauli_index != len(pauli_strings):
-            post_pauli = pauli_strings[pauli_index - 1]
-            common_post_indexes = calc_common_index(post_pauli[::-1], pauli[::-1])
-        common_prev_meas_indexes = [mapping[i] for i in common_prev_indexes]
-        print("prev common idx", common_prev_indexes, common_prev_meas_indexes)  
-        common_post_meas_indexes = [mapping[i] for i in common_post_indexes]
-        print("post common idx", common_post_indexes, common_post_meas_indexes)
-        merged_meas_indexes = common_prev_meas_indexes.copy()
-        
-        for item in common_post_meas_indexes:
-            if item not in merged_meas_indexes:
-                merged_meas_indexes.append(item)
-
-        common_meas_indexes = []
-
-        if pauli_index > 0:
-            prev_shared_index = shared_pauli_idxs[pauli_index - 1]
-        else:
-            prev_shared_index = -1
-
-        for item in common_post_meas_indexes:
-            if item in common_prev_meas_indexes:
-                common_meas_indexes.append(item)
-            
-        if len(common_meas_indexes) == 0:
-            common_meas_indexes = [merged_meas_indexes[-1]]
-
-        #if the previously shared index is in the current common meas_indexes
-        if prev_shared_index in common_meas_indexes:
-            shared_index = prev_shared_index
-        else:
-            shared_index = common_meas_indexes[-1]
-        shared_pauli_idxs.append(shared_index)
-                
-        ladder_meas_indexes = [item for item in meas_indexes if item not in merged_meas_indexes] + [shared_index]
-        ladder_meas_indexes.sort()
-
-        #first apply the star shape circuit for cancellation
-        for idx in range(0, len(merged_meas_indexes) - 1):
-            if merged_meas_indexes[idx] != shared_index:
-                circuit.cx(merged_meas_indexes[idx], shared_index)    
-
-        #then apply the ladder shape circuit:
-        for idx in range(0, len(ladder_meas_indexes) - 1):
-            circuit.cx(ladder_meas_indexes[idx], ladder_meas_indexes[idx + 1])
-        
-        #One measurement
-#         circuit.measure(meas_indexes[-1], ancilla_cr[0])
-        circuit.measure(ladder_meas_indexes[-1], ancilla_cr[0])
-
-        #apply the inversed ladder shape circuti
-        for idx in range(len(ladder_meas_indexes) - 2, -1,  -1):
-            circuit.cx(ladder_meas_indexes[idx], ladder_meas_indexes[idx + 1])
-
-        #apply the inversed star shape circuit for cancellation
-        for idx in range(len(merged_meas_indexes) - 1, -1,  -1):
-            if merged_meas_indexes[idx] != shared_index:
-                circuit.cx(merged_meas_indexes[idx], shared_index)  
-        
-        # for idx in range(len(meas_indexes) - 1, -1,  -1):
-        #     if meas_indexes[idx] != mapping[common_pauli_idxs[pauli_index]]:
-        #         circuit.cx(meas_indexes[idx], mapping[common_pauli_idxs[pauli_index]])  
-        
-#         if pauli_index == len(pauli_strings) - 1:
-#             #apply a chain of CNOTs
-#             for idx in range(len(meas_indexes) - 2, -1,  -1):
-#                 circuit.cx(meas_indexes[idx],meas_indexes[idx + 1])
-#         else:
-#             #compare with the next pauli:
-#             next_pauli = pauli_strings[pauli_index + 1]
-#             common_indexes = calc_common_index(pauli[::-1], next_pauli[::-1])
-#             common_meas_indexes = [mapping[i] for i in common_indexes]
-#             print("next common idx", common_indexes, meas_indexes, common_meas_indexes, meas_indexes)
-#             new_meas_indexes =  common_meas_indexes + [i for i in meas_indexes if i not in common_meas_indexes]
-#             #apply a chain of CNOTs
-#             for idx in range(len(new_meas_indexes) - 2, -1,  -1):
-#                 circuit.cx(new_meas_indexes[idx],new_meas_indexes[idx + 1])
-#             for idx in range(0, len(new_meas_indexes) - 1):
-#                 circuit.cx(new_meas_indexes[idx],new_meas_indexes[idx + 1])
-                
-#         #Then apply a chain of CNOTs?
-#         for idx in range(len(meas_indexes) - 2, -1,  -1):
-#             print(meas_indexes, idx)
-#             circuit.cx(meas_indexes[idx],meas_indexes[idx + 1])
-        #add Rotations
-        for orign_index, char in enumerate(reversed(pauli)):
-            index = mapping[orign_index]
-            if char == 'X':
-                circuit.h(index)
-            elif char == 'Y':
-                circuit.h(index)
-                circuit.s(index)  
-        if barrier is True:
-            circuit.barrier()
-            
-
-def filter_results(dictionary, qubits, indexes, sign_list):
-    new_dict = {}
-    for key in dictionary.keys():
-        new_key = ''
-        for i in range(len(key)):
-            meas_index = math.floor((i - qubits)/2)
-#             print(i, meas_index)
-#             print(meas_index in indexes)
-            if meas_index in indexes and key[i] == sign_list[meas_index]:
-                #the key equals the sign
-#                 print("not found")
-                new_key = ''
-                break
-            if meas_index not in indexes:
-                new_key += key[i]
-        if new_key != '':
-            new_dict[new_key] = dictionary[key]
-    return new_dict
-
-def pauli_strings_commute(pauli_str1, pauli_str2):
-    """
-    Determine if two Pauli strings commute.
-    
-    :param pauli_str1: A string representing the first Pauli operator.
-    :param pauli_str2: A string representing the second Pauli operator.
-    :return: True if the Pauli strings commute, False otherwise.
-    """
-    if len(pauli_str1) != len(pauli_str2):
-        raise ValueError("Pauli strings must be of the same length.")
-    
-    commute = True  # Assume they commute until proven otherwise
-    
-    anticommute_count = 0
-    
-    for i in range(len(pauli_str1)):
-        if pauli_str1[i] != pauli_str2[i] and pauli_str1[i] != 'I' and pauli_str2[i] != 'I':
-            # Found anti-commuting Pauli matrices
-            commute = False
-            anticommute_count += 1
-
-    if anticommute_count % 2 == 0:
-        commute = True
-    
-    return commute
 
 def postselect_counts(counts: dict, num_ancillas: int)->dict:
     '''Assumes that ancillas are on the left.
