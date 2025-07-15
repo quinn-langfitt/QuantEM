@@ -2,7 +2,7 @@ from __future__ import annotations
 
 from typing import TYPE_CHECKING
 
-from quantem.iceberg_codegen import build_iceberg_circuit
+from quantem.iceberg_code import build_iceberg_circuit
 from quantem.utils import convert_to_PCS_circ, convert_to_ancilla_free_PCS_circ, find_largest_clifford_block
 
 from qiskit_addon_utils.slicing import slice_by_depth
@@ -129,13 +129,12 @@ def place_iceberg(
       - Transpile, initialize, map logical->physical, syndrome, readout
     """
     # build_iceberg_circuit handles transpile + placement + measurements
-    phys_qc, regs = build_iceberg_circuit(
-        circ,
-        optimize_level=3,
-        attach_syndrome=True,
-        attach_readout=True,
-    )
-    return phys_qc, regs
+    qed_qc, reg_bundle = build_iceberg_circuit(
+    circ,
+    optimize_level=3,
+    attach_readout=True
+)
+    return qed_qc, reg_bundle
 
 
 # ---------------------------------------------------------------------------- #
