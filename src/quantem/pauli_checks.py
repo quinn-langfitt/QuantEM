@@ -536,7 +536,7 @@ def append_linear_meas_paulis_strings_to_circuit(circuit, pauli_strings, mapping
         if barrier is True:
             circuit.barrier()
 
-def postselect_counts(counts: dict, num_ancillas: int, sign_list:list )->dict:
+def postselect_counts(counts: dict, sign_list:list, num_ancillas: int )->dict:
     '''
     Assumes that ancillas are on the left.
 
@@ -559,6 +559,6 @@ def postselect_counts(counts: dict, num_ancillas: int, sign_list:list )->dict:
     for key in counts.keys():
         if err_free_checks == key[:no_checks]:
             new_key = key[no_checks:]
-        final_counts[new_key] = counts[key]
+            final_counts[new_key] = counts[key]
     return final_counts
     
