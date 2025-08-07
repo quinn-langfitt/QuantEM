@@ -26,4 +26,5 @@ pip install .[notebook]
 on an ancilla through phase kickback. The errors that are detected in $U$ anticommute with the Pauli operators in the selected checks.
 + **Ancilla-free Pauli Checks, AFPC**: AFPC does not include an ancilla that is measured for syndrome information. Instead, syndrome information is read out directly from the qubit targeted by Pauli checks. AFPC is effective for application-specific error characterization.
 + **Pauli Check Extrapolation, PCE** (*Coming Soon*)
-+ **Iceberg Code** The Iceberg code is a distance 2 code, [[k+2, k, 2]] for even k, that scales efficiently with the number of logical qubits. The Iceberg code requires only two additional qubits for the encoded state. The code implements fault-tolerant initial state preparation and syndrome measurement circuits capable of detecting any single-qubit error.
++ **Iceberg Code**: The Iceberg code is a distance 2 code, [[k+2, k, 2]] for even k, that scales efficiently with the number of 
+logical qubits. The Iceberg code requires only two additional qubits for the encoded state. The code implements fault-tolerant initial state preparation and syndrome measurement circuits capable of detecting any single-qubit error.
