@@ -1,3 +1,9 @@
+"""QuantEM: Quantum Error Detection Compiler.
+
+A Python library for automatically integrating quantum error detection
+into quantum circuits using various QED protocols.
+"""
+
 import sys
 
 # ==== rust stuff ==== #
@@ -10,4 +16,12 @@ from . import rust
 # and not have to rely on attribute access.  No action needed for top-level extension packages.
 sys.modules["quantem.rust.sabre"] = rust.sabre
 
-__all__ = []
+# ==== Public API ==== #
+
+from .compiler import QEDCompiler, QEDStrategy, CompilationResult
+
+__all__ = [
+    "QEDCompiler",
+    "QEDStrategy", 
+    "CompilationResult",
+]
