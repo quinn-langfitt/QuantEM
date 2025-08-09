@@ -130,18 +130,9 @@ class ChecksFinder:
         layers = list(circ_dag.multigraph_layers())
         num_layers = len(layers)
 
-        # Place counter somewhere here?
-
         while True:
-            # print("layers = " , layers)
-            # print()
             layer = layers[temp_check_reversed.layer_idx]
-            # print("single layer = ", layer)
-            # print()
-
             for node in layer:
-                # print("node = ", node.name)
-                # print()
                 if isinstance(node, DAGOpNode): 
                     self.handle_operator_node(node, temp_check_reversed)
             if self.should_return_result(temp_check_reversed, num_layers):
@@ -149,7 +140,6 @@ class ChecksFinder:
                 p1.operations = list(reversed(temp_check_reversed.operations))
                 return self.get_check_strs(p1, p2)
             temp_check_reversed.layer_idx += 1
-            # print("layer index for temp check = ", temp_check_reversed.layer_idx)
 
     def handle_operator_node(self, node, temp_check_reversed: TempCheckOperator):
         '''Handles operations for nodes of type "op".'''
@@ -165,10 +155,7 @@ class ChecksFinder:
     @staticmethod
     def update_current_ops(op1: List[str], op2: str, temp_check_reversed: TempCheckOperator, current_qubits: List[int]):
         '''Finds the intermediate check. Always push op1 through op2. '''
-        # print("pushing op1: ", op1, " through op2: ", op2)
         result = ChecksFinder.get_result(op1, op2)
-        # print("result: ", result)
-        # print()
         temp_check_reversed.phase *= result[0]
         for idx, op in enumerate(result[1:]):
             temp_check_reversed.operations[current_qubits[idx]] = op
@@ -221,17 +208,6 @@ class ChecksFinder:
         phase_str = f"+{phase}" if len(str(phase)) == 1 else str(phase)
         operations.insert(0, phase_str)
         return "".join(operations)
-    
-#     @staticmethod
-#     def get_current_qubits(node):
-#         '''Finding checks: Symbolic: get the current qubits whose operations that will be passed through.'''
-#         # We have to check for single or two qubit gates.
-#         if node.name in ["x", "y", "z", "h", "s", "sdg", "rz"]:
-#             return [node.qargs[0].index]
-#         elif node.name in ["cx", "swap"]:
-#             return [node.qargs[0].index, node.qargs[1].index]
-#         else:
-#             assert False, "Overlooked a node operation."
             
     # Use for new qiskit version (Qiskit verions >= 1.0)
     @staticmethod
@@ -239,8 +215,8 @@ class ChecksFinder:
         '''Finding checks: Symbolic: get the current qubits whose operations that will be passed through.'''
         circ_dag = circuit_to_dag(self.circ_reversed)
         dag_qubit_map = {bit: index for index, bit in enumerate(circ_dag.qubits)}
+
         # We have to check for single or two qubit gates.
-        # print("node.name = ", node.name)
         if node.name in ["x", "y", "z", "h", "s", "sdg", "rz", "rx"]:
             return [dag_qubit_map[node.qargs[0]]]
         elif node.name in ["cx", "swap"]:
@@ -254,7 +230,6 @@ def append_paulis_to_circuit(circuit, pauli_string):
     """
     for index, char in enumerate(reversed(pauli_string)):
         if char == 'I':
-            # circuit.i(index)
             circuit.id(index)
         elif char == 'X':
             circuit.x(index)
@@ -296,21 +271,18 @@ def verify_circuit_with_pauli_checks(circuit, left_check, right_check):
 
 
 def add_pauli_checks(circuit, left_check, right_check, initial_layout, final_layout, pauli_meas = False, single_side = False, qubit_measure = False, ancilla_measure = False, barriers = False, increase_size = 0):
-    #initial_layout: mapping from original circuit index to the physical qubit index
-    #final_layout: mapping from original circuit index to the final physical qubit index
+    # initial_layout: mapping from original circuit index to the physical qubit index
+    # final_layout: mapping from original circuit index to the final physical qubit index
     if initial_layout is None:
-        #Number of qubits in circuit and checks must be equal.
+        # Number of qubits in circuit and checks must be equal.
         assert len(circuit.qubits) == len(left_check) == len(right_check)
-        #First verify the paulis are correct:
+        # First verify the paulis are correct:
         _, equal = verify_circuit_with_pauli_checks(circuit, left_check, right_check)
         assert(equal)
     ancilla_index = len(circuit.qubits)
     if increase_size > 0:
         ancilla_index = len(circuit.qubits) - increase_size
     if pauli_meas is False:
-#         check_circuit = QuantumCircuit(ancilla_index)
-#         append_meas_paulis_to_circuit(check_circuit, left_check, initial_layout)
-#     else:
         if increase_size > 0:
             check_circuit = QuantumCircuit(len(circuit.qubits))
         else:
@@ -328,7 +300,7 @@ def add_pauli_checks(circuit, left_check, right_check, initial_layout, final_lay
         check_circuit.h(ancilla_index)
     
     if ancilla_measure is True:
-        #add one measurement for the ancilla measurement
+        # add one measurement for the ancilla measurement
         ancilla_cr = ClassicalRegister(1, str(right_check))
         check_circuit.add_register(ancilla_cr)
         check_circuit.measure(ancilla_index, ancilla_cr[0])
@@ -355,11 +327,8 @@ class IdentifyOutputMapping(AnalysisPass):
         """
         self.property_set["output_mapping"] = defaultdict()
         for node in dag.topological_nodes():
-            # if isinstance(node, DAGOpNode) and node.name is 'measure':
             if isinstance(node, DAGOpNode) and node.name == 'measure':
-                #print(node.qargs, node.cargs)
                 self.property_set["output_mapping"][node.cargs[0].index] = node.qargs[0]
-#         return self.property_set["remote_gates"]
 
 class SavePropertySet(AnalysisPass):
     """Printing the propertyset."""
@@ -382,7 +351,7 @@ class SavePropertySet(AnalysisPass):
     
 def update_cnot_dist(input_dict, ctrl_index, targ_index):
     output_dict = {}
-    #the postprocessing process is equivalent to applying a cnot to qubit index i, and j.
+    # The postprocessing process is equivalent to applying a cnot to qubit index i, and j.
     for key in input_dict.keys():
         new_key = list(key)
         if key[ctrl_index] == '1':
@@ -400,11 +369,11 @@ def single_side_postprocess(input_dict, right_checks, qubits, layer_index):
     for index in range(0, len(right_checks)):
         check = right_checks[index]
         if check == 'Z':
-            ctrl_index = index#qubits - index - 1 
+            ctrl_index = index # qubits - index - 1 
             targ_index = - 2 * layer_index - 1
             print(ctrl_index, targ_index)
             output_dict = update_cnot_dist(output_dict, ctrl_index, targ_index)
-            #change the corresponding qubit in the distribution
+            # change the corresponding qubit in the distribution
     return output_dict
 
 def calc_common_index(string_1, string_2):
@@ -421,12 +390,12 @@ def append_meas_paulis_strings_to_circuit(circuit, pauli_strings, mapping, commo
     """
     for pauli_index in range(0, len(pauli_strings)):
         pauli = pauli_strings[pauli_index]
-        #add classical registers
+        # add classical registers
         ancilla_cr = ClassicalRegister(1, str(pauli))
         circuit.add_register(ancilla_cr)
         
         meas_indexes = []
-        #add Rotations
+        # add Rotations
         for orign_index, char in enumerate(reversed(pauli)):
             index = mapping[orign_index]
             if char == 'X':
@@ -442,15 +411,14 @@ def append_meas_paulis_strings_to_circuit(circuit, pauli_strings, mapping, commo
             if meas_indexes[idx] != mapping[common_pauli_idxs[pauli_index]]:
                 circuit.cx(meas_indexes[idx], mapping[common_pauli_idxs[pauli_index]])        
 
-        #One measurement
-#         circuit.measure(meas_indexes[-1], ancilla_cr[0])
+        # One measurement
         circuit.measure(mapping[common_pauli_idxs[pauli_index]], ancilla_cr[0])
     
         for idx in range(len(meas_indexes) - 1, -1,  -1):
             if meas_indexes[idx] != mapping[common_pauli_idxs[pauli_index]]:
                 circuit.cx(meas_indexes[idx], mapping[common_pauli_idxs[pauli_index]])  
 
-        #add Rotations
+        # add Rotations
         for orign_index, char in enumerate(reversed(pauli)):
             index = mapping[orign_index]
             if char == 'X':
@@ -515,17 +483,15 @@ def append_linear_meas_paulis_strings_to_circuit(circuit, pauli_strings, mapping
             elif char == 'Z':
                 meas_indexes.append(index)
         for idx in range(0, len(meas_indexes) - 1):
-            # if meas_indexes[idx] != mapping[common_pauli_idxs[pauli_index]]:
             circuit.cx(meas_indexes[idx], meas_indexes[idx + 1])        
 
         #One measurement
-#         circuit.measure(meas_indexes[-1], ancilla_cr[0])
         circuit.measure(meas_indexes[-1], ancilla_cr[0])
 
         for idx in range(len(meas_indexes) - 2, -1,  -1):
             circuit.cx(meas_indexes[idx],meas_indexes[idx + 1])
         
-        #add Rotations
+        # add Rotations
         for orign_index, char in enumerate(reversed(pauli)):
             index = mapping[orign_index]
             if char == 'X':
