@@ -26,30 +26,6 @@ class Syndrome_gate(Instruction):
 
     def _define(self):
         raise NotImplementedError("The gate is not synthesized")
-    
-# class Syndrome_meas(Instruction):
-#     """Syndrome measurement including physical and classical register"""
-#     def __init__(self, logical_qubits: int, syndrome_idx: str):
-#         """Apply syndrome measurement for physical qubits
-#         """
-#         super().__init__(
-#             "Syndrome_meas",
-#             num_qubits=logical_qubits + 2,
-#             num_clbits=2,
-#             params=[logical_qubits],
-#         )
-#         self.p_qubits = logical_qubits
-#         self.syndrome_idx = syndrome_idx
-
-#     def _define(self):
-#         p = QuantumRegister(self.p_qubits, "p")      # physical qubit
-#         t = QuantumRegister(1, "t")                # top qubit
-#         b = QuantumRegister(1, "b")                # bottom qubit
-#         syn = QuantumRegister(2, "syn" + self.syndrome_idx)
-#         syn_c = ClassicalRegister(1, "syn_c" + self.syndrome_idx)
-#         qc = QuantumCircuit(p, t, b, syn, syn_c)
-
-
 
 
 
