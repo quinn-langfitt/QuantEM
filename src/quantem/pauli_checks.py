@@ -143,7 +143,7 @@ class ChecksFinder:
 
     def handle_operator_node(self, node, temp_check_reversed: TempCheckOperator):
         '''Handles operations for nodes of type "op".'''
-        current_qubits = self.get_current_qubits(self, node)
+        current_qubits = self.get_current_qubits(node)
         current_ops = [temp_check_reversed.operations[qubit] for qubit in current_qubits]
         node_op = node.name.upper()
         self.update_current_ops(current_ops, node_op, temp_check_reversed, current_qubits)
@@ -208,7 +208,7 @@ class ChecksFinder:
         phase_str = f"+{phase}" if len(str(phase)) == 1 else str(phase)
         operations.insert(0, phase_str)
         return "".join(operations)
-            
+      
     # Use for new qiskit version (Qiskit verions >= 1.0)
     def get_current_qubits(self, node):
         '''Finding checks: Symbolic: get the current qubits whose operations that will be passed through.'''
