@@ -149,8 +149,6 @@ def convert_to_PCS_circ(circ, num_qubits, num_checks, barriers=False, reverse=Fa
         for p in itertools.product(characters, repeat=num_qubits)
         if not all(c == "I" for c in p)
     ]
-    # print("strings to try ", strings)
-    # print()
 
     def weight(pauli_string):
         return sum(1 for char in pauli_string if char != "I")
@@ -158,14 +156,12 @@ def convert_to_PCS_circ(circ, num_qubits, num_checks, barriers=False, reverse=Fa
     sorted_strings = sorted(strings, key=weight)
     if reverse:
         sorted_strings.reverse()
-    # print("Sorted by weight:", sorted_strings)
 
     test_finder = ChecksFinder(num_qubits, circ)
     p1_list = []
     found_checks = 0  # Counter for successful checks found
 
     for string in sorted_strings:
-        # print("attempting ", string)
         string_list = list(string)
         try:
             result = test_finder.find_checks_sym(pauli_group_elem=string_list)
@@ -177,19 +173,10 @@ def convert_to_PCS_circ(circ, num_qubits, num_checks, barriers=False, reverse=Fa
                 print("p1_list = ", p1_list)
                 break  # Stop the loop if we have found enough checks
         except Exception as e:
-            # print(f"Failed to find checks for {string_list}: {e}")
             continue  # Skip to the next iteration if an error occurs
 
     if found_checks < num_checks:
         print("Warning: Less checks found than required.")
-
-    # print("p1_list = ", p1_list)
-    # sorted_list = sorted(p1_list, key=lambda s: s[1].count('I'))
-    # # pauli_list = sorted_list[-num_qubits -1:-1]
-    # pauli_list = sorted_list[-num_checks -1:-1]
-
-    # # print("sorted list: ", sorted_list)
-    # print("pauli list: ", pauli_list)
 
     initial_layout = {}
     for i in range(0, num_qubits):
@@ -207,9 +194,7 @@ def convert_to_PCS_circ(circ, num_qubits, num_checks, barriers=False, reverse=Fa
     pr_list = []
 
     for i in range(0, num_checks):
-        # pl = pauli_list[i][0][2:]
         pl = p1_list[i][0][2:]
-        # pr = pauli_list[i][1][2:]
         pr = p1_list[i][1][2:]
         if i == 0:
             temp_qc = add_pauli_checks(
@@ -407,7 +392,6 @@ def convert_to_PCS_circ_largest_clifford(circ, num_qubits, num_checks):
     sign_list, protected_block_with_checks = convert_to_PCS_circ(
         protected_block, num_qubits, num_checks
     )
-    # print(protected_block_with_checks.draw())
 
     pre_slices = slices[:start_idx]  # slices before the Clifford block.
     post_slices = slices[end_idx + 1 :]  # slices after the Clifford block.
@@ -460,13 +444,8 @@ def get_VF2_layouts(qc, backend):
     trans_qc = transpile(qc, backend, optimization_level=3)
     small_qc = mm.deflate_circuit(trans_qc)
     layouts = mm.matching_layouts(small_qc, backend)  # Runs VF2
-    # layouts = mm.matching_layouts(qc, backend)
-    # print("layouts:")
-    # print(layouts)
 
-    # mapping_ranges = find_nonoverlapping_layouts(layouts) # Runs maximum independent set to approximate maximum number of non-overlapping regions
     mapping_ranges = find_nonoverlapping_layouts(layouts)
-    # mapping_ranges = layouts
     return mapping_ranges, small_qc
 
 
