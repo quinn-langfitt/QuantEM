@@ -210,7 +210,6 @@ class ChecksFinder:
         return "".join(operations)
             
     # Use for new qiskit version (Qiskit verions >= 1.0)
-    @staticmethod
     def get_current_qubits(self, node):
         '''Finding checks: Symbolic: get the current qubits whose operations that will be passed through.'''
         circ_dag = circuit_to_dag(self.circ_reversed)
