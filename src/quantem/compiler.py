@@ -64,25 +64,6 @@ class CompilationResult:
     strategy_used: QEDStrategy
     metadata: Dict[str, Any]
 
-
-# ---------------------------------------------------------------------------- #
-# Analysis Functions
-# ---------------------------------------------------------------------------- #
-
-
-# def percent_clifford(circ: QuantumCircuit) -> float:
-#     """
-#     Calculate the fraction of instructions in `circ` whose names are in CLIFFORD_NAMES.
-#     Returns a float between 0 and 1.
-#     """
-#     instructions = circ.data
-#     if not instructions:
-#         return 0.0
-#     count_clifford = sum(
-#         1 for instr, *_ in instructions if instr.name in CLIFFORD_NAMES
-#     )
-#     return count_clifford / len(instructions)
-
 # ---------------------------------------------------------------------------- #
 # QED Compiler Class
 # ---------------------------------------------------------------------------- #
