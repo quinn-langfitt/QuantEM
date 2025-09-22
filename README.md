@@ -3,7 +3,7 @@
 ---
 Error detection will be an integral part of quantum processing, especially for near-term demonstrations of quantum advantage. Unfortunately, adding quantum error detection (QED) to arbitrary quantum circuits is a daunting task as deep knowledge of detecting codes and required circuit modifications is required.
 
-This project contains the first Python-based compiler that automatically integrates QED into quantum circuits, simplifying the inclusion of QED into quantum error management workflows. High-level quantum programs are translated into error-detectable low-level circuits that are quantum machine compatable.
+This project contains the first Python-based compiler that automatically integrates QED into quantum circuits, simplifying the inclusion of QED into quantum error management workflows. High-level quantum programs are translated into error-detectable low-level circuits that are quantum machine compatable. You can read more about the project [here](https://arxiv.org/abs/2509.15505).
 
 ## Getting Started
 
