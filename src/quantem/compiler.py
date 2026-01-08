@@ -1,10 +1,23 @@
+from __future__ import annotations
+'''Copyright © 2025 UChicago Argonne, LLC and Northwestern University All right reserved
+
+Licensed under the Apache License, Version 2.0 (the "License");
+you may not use this file except in compliance with the License.
+You may obtain a copy of the License at:
+
+    https://github.com/quinn-langfitt/QuantEM/blob/main/LICENSE.txt
+
+Unless required by applicable law or agreed to in writing, software
+distributed under the License is distributed on an "AS IS" BASIS,
+WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+See the License for the specific language governing permissions and
+limitations under the License.'''
+
 """QuantEM Quantum Error Detection Compiler.
 
 This module provides the main QEDCompiler class for automatically integrating
 quantum error detection into quantum circuits.
 """
-
-from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
@@ -152,7 +165,7 @@ class QEDCompiler:
         **kwargs,
     ) -> CompilationResult:
         """Compile quantum circuit with error detection.
-        
+
         Args:
             circuit: Input quantum circuit to protect
             strategy: QED strategy to use (AUTO selects automatically)
@@ -160,12 +173,16 @@ class QEDCompiler:
             gateset: Supported gate set (for future use)
             num_checks: Number of Pauli checks (uses default if None)
             **kwargs: Additional strategy-specific parameters
-            
+                     - barriers (bool): Add barriers around protected circuit (default: True)
+                     - reverse (bool): Search for checks in reverse weight order (default: False)
+                     - only_X_checks (bool): Only use X-type right Pauli checks (default: False)
+                     - only_Z_checks (bool): Only use Z-type right Pauli checks (default: False)
+
         Returns:
             CompilationResult with protected circuit and metadata
-            
+
         Raises:
-            ValueError: If invalid strategy or parameters provided
+            ValueError: If invalid strategy or parameters provided (e.g., both only_X_checks and only_Z_checks are True)
         """
         if num_checks is None:
             num_checks = self.default_num_checks
@@ -316,9 +333,11 @@ class QEDCompiler:
         """Apply Pauli Check Sandwiching strategy."""
         try:
             sign_list, qed_circuit = convert_to_PCS_circ(
-                circuit, circuit.num_qubits, num_checks, 
+                circuit, circuit.num_qubits, num_checks,
                 barriers=kwargs.get('barriers', True),
-                reverse=kwargs.get('reverse', False)
+                reverse=kwargs.get('reverse', False),
+                only_X_checks=kwargs.get('only_X_checks', False),
+                only_Z_checks=kwargs.get('only_Z_checks', False)
             )
             
             metadata = {
@@ -343,7 +362,9 @@ class QEDCompiler:
                 convert_to_ancilla_free_PCS_circ(
                     circuit, circuit.num_qubits, num_checks,
                     barriers=kwargs.get('barriers', True),
-                    reverse=kwargs.get('reverse', False)
+                    reverse=kwargs.get('reverse', False),
+                    only_X_checks=kwargs.get('only_X_checks', False),
+                    only_Z_checks=kwargs.get('only_Z_checks', False)
                 )
             )
             
