@@ -59,10 +59,19 @@ def check_to_ancilla_free_circ(check_str, num_qubits):
 
 
 def convert_to_ancilla_free_PCS_circ(
-    circ, num_qubits, num_checks, barriers=False, reverse=False
+    circ, num_qubits, num_checks, barriers=False, reverse=False, only_X_checks=False, only_Z_checks=False
 ):
 
-    characters = ["I", "X", "Z"]
+    if only_X_checks and only_Z_checks:
+        raise ValueError("Cannot specify both only_X_checks and only_Z_checks")
+
+    if only_X_checks:
+        characters = ["I", "X"]
+    elif only_Z_checks:
+        characters = ["I", "Z"]
+    else:
+        characters = ["I", "X", "Z"]
+
     candidate_strings = [
         "".join(p)
         for p in itertools.product(characters, repeat=num_qubits)
@@ -140,10 +149,19 @@ def convert_to_ancilla_free_PCS_circ(
     return sign_list, final_circ, left_mappings_list, right_mappings_list
 
 
-def convert_to_PCS_circ(circ, num_qubits, num_checks, barriers=False, reverse=False):
+def convert_to_PCS_circ(circ, num_qubits, num_checks, barriers=False, reverse=False, only_X_checks=False, only_Z_checks=False):
     total_qubits = num_qubits + num_checks
 
-    characters = ["I", "X", "Z"]
+    if only_X_checks and only_Z_checks:
+        raise ValueError("Cannot specify both only_X_checks and only_Z_checks")
+
+    if only_X_checks:
+        characters = ["I", "X"]
+    elif only_Z_checks:
+        characters = ["I", "Z"]
+    else:
+        characters = ["I", "X", "Z"]
+
     strings = [
         "".join(p)
         for p in itertools.product(characters, repeat=num_qubits)

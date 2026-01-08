@@ -119,7 +119,7 @@ class QEDCompiler:
         **kwargs,
     ) -> CompilationResult:
         """Compile quantum circuit with error detection.
-        
+
         Args:
             circuit: Input quantum circuit to protect
             strategy: QED strategy to use (AUTO selects automatically)
@@ -127,12 +127,16 @@ class QEDCompiler:
             gateset: Supported gate set (for future use)
             num_checks: Number of Pauli checks (uses default if None)
             **kwargs: Additional strategy-specific parameters
-            
+                     - barriers (bool): Add barriers around protected circuit (default: True)
+                     - reverse (bool): Search for checks in reverse weight order (default: False)
+                     - only_X_checks (bool): Only use X-type right Pauli checks (default: False)
+                     - only_Z_checks (bool): Only use Z-type right Pauli checks (default: False)
+
         Returns:
             CompilationResult with protected circuit and metadata
-            
+
         Raises:
-            ValueError: If invalid strategy or parameters provided
+            ValueError: If invalid strategy or parameters provided (e.g., both only_X_checks and only_Z_checks are True)
         """
         if num_checks is None:
             num_checks = self.default_num_checks
@@ -217,9 +221,11 @@ class QEDCompiler:
         """Apply Pauli Check Sandwiching strategy."""
         try:
             sign_list, qed_circuit = convert_to_PCS_circ(
-                circuit, circuit.num_qubits, num_checks, 
+                circuit, circuit.num_qubits, num_checks,
                 barriers=kwargs.get('barriers', True),
-                reverse=kwargs.get('reverse', False)
+                reverse=kwargs.get('reverse', False),
+                only_X_checks=kwargs.get('only_X_checks', False),
+                only_Z_checks=kwargs.get('only_Z_checks', False)
             )
             
             metadata = {
@@ -244,7 +250,9 @@ class QEDCompiler:
                 convert_to_ancilla_free_PCS_circ(
                     circuit, circuit.num_qubits, num_checks,
                     barriers=kwargs.get('barriers', True),
-                    reverse=kwargs.get('reverse', False)
+                    reverse=kwargs.get('reverse', False),
+                    only_X_checks=kwargs.get('only_X_checks', False),
+                    only_Z_checks=kwargs.get('only_Z_checks', False)
                 )
             )
             
