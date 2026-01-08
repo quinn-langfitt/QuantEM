@@ -1,3 +1,4 @@
+from __future__ import annotations
 '''Copyright © 2025 UChicago Argonne, LLC and Northwestern University All right reserved
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -15,8 +16,6 @@ limitations under the License.'''
 """
 Iceberg quantum‑error‑detection code utilities
 """
-
-from __future__ import annotations
 
 from types import SimpleNamespace
 from typing import Dict, Tuple, List

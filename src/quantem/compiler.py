@@ -1,3 +1,4 @@
+from __future__ import annotations
 '''Copyright © 2025 UChicago Argonne, LLC and Northwestern University All right reserved
 
 Licensed under the Apache License, Version 2.0 (the "License");
@@ -17,8 +18,6 @@ limitations under the License.'''
 This module provides the main QEDCompiler class for automatically integrating
 quantum error detection into quantum circuits.
 """
-
-from __future__ import annotations
 
 import logging
 from dataclasses import dataclass
