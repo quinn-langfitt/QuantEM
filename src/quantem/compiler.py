@@ -261,6 +261,10 @@ class QEDCompiler:
         if any(n < 0 for n in check_counts):
             raise ValueError("check_counts must contain non-negative integers")
 
+        # Validate check type parameters
+        if kwargs.get('only_X_checks', False) and kwargs.get('only_Z_checks', False):
+            raise ValueError("Cannot specify both only_X_checks and only_Z_checks")
+
         self.logger.info(
             f"Compiling circuit for PCE with {len(check_counts)} check counts: {check_counts}"
         )
