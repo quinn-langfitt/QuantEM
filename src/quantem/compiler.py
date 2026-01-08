@@ -25,6 +25,7 @@ from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from quantem.iceberg_code import build_iceberg_circuit
+from quantem.pauli_check_extrapolation import analyze_pce_results
 from quantem.utils import (
     convert_to_PCS_circ,
     convert_to_ancilla_free_PCS_circ,
@@ -67,7 +68,7 @@ class QEDStrategy(Enum):
 @dataclass
 class CompilationResult:
     """Result of QED compilation.
-    
+
     Attributes:
         circuit: The compiled quantum circuit with error detection
         strategy_used: The QED strategy that was applied
@@ -76,6 +77,38 @@ class CompilationResult:
     circuit: QuantumCircuit
     strategy_used: QEDStrategy
     metadata: Dict[str, Any]
+
+
+@dataclass
+class PCECompilationResult:
+    """Result of Pauli Check Extrapolation (PCE) compilation.
+
+    This class stores circuits compiled with different numbers of Pauli checks
+    for use in PCE error mitigation. After measuring expectation values from
+    these circuits, use analyze_pce_results() to extrapolate to the maximum
+    check limit.
+
+    Attributes:
+        circuits: Dictionary mapping num_checks -> compiled circuit
+                 Example: {1: circuit_1check, 2: circuit_2checks, 3: circuit_3checks}
+        strategy_used: The QED strategy used for compilation (typically PCS or AFPC)
+        metadata: Additional compilation information for each check count
+
+    Example:
+        >>> compiler = QEDCompiler()
+        >>> circuit = QuantumCircuit(4)
+        >>> pce_result = compiler.compile_pce(circuit, check_counts=[1, 2, 3])
+        >>> # Run circuits and collect expectation values
+        >>> expectations = {1: 0.75, 2: 0.85, 3: 0.92}
+        >>> # Extrapolate to maximum checks (e.g., 4 for a 4-qubit circuit)
+        >>> from quantem.pauli_check_extrapolation import analyze_pce_results
+        >>> result = analyze_pce_results(expectations, n_max=4, model="exponential")
+        >>> print(result['extrapolated_value'])
+        0.97
+    """
+    circuits: Dict[int, QuantumCircuit]
+    strategy_used: QEDStrategy
+    metadata: Dict[int, Dict[str, Any]]
 
 # ---------------------------------------------------------------------------- #
 # QED Compiler Class
@@ -183,7 +216,77 @@ class QEDCompiler:
             strategy_used=strategy,
             metadata=metadata,
         )
-    
+
+    def compile_pce(
+        self,
+        circuit: QuantumCircuit,
+        check_counts: list[int],
+        **kwargs,
+    ) -> PCECompilationResult:
+        """Compile circuit with multiple check counts for Pauli Check Extrapolation (PCE).
+
+        This method generates multiple versions of the circuit with different numbers
+        of Pauli checks for use in PCE error mitigation. The expectation values from
+        these circuits can be extrapolated to estimate the maximum check limit.
+
+        Args:
+            circuit: Input quantum circuit to protect
+            check_counts: List of check counts to compile
+                         Example: [1, 2, 3] compiles with 1, 2, and 3 checks
+            **kwargs: Additional PCS-specific parameters (barriers, reverse, etc.)
+
+        Returns:
+            PCECompilationResult containing circuits for each check count
+
+        Raises:
+            ValueError: If check_counts is empty or contains negative values
+
+        Example:
+            >>> compiler = QEDCompiler()
+            >>> circuit = QuantumCircuit(4)
+            >>> circuit.h(0)
+            >>> circuit.cx(0, 1)
+            >>> # Compile with 1, 2, and 3 checks
+            >>> pce_result = compiler.compile_pce(circuit, check_counts=[1, 2, 3])
+            >>> # Execute circuits and collect expectation values
+            >>> expectations = {1: 0.75, 2: 0.85, 3: 0.92}
+            >>> # Extrapolate to n_max=4
+            >>> from quantem.pauli_check_extrapolation import analyze_pce_results
+            >>> result = analyze_pce_results(expectations, n_max=4)
+        """
+        # Validate check_counts
+        if not check_counts:
+            raise ValueError("check_counts must contain at least one value")
+
+        if any(n < 0 for n in check_counts):
+            raise ValueError("check_counts must contain non-negative integers")
+
+        # Validate check type parameters
+        if kwargs.get('only_X_checks', False) and kwargs.get('only_Z_checks', False):
+            raise ValueError("Cannot specify both only_X_checks and only_Z_checks")
+
+        self.logger.info(
+            f"Compiling circuit for PCE with {len(check_counts)} check counts: {check_counts}"
+        )
+
+        # Compile circuit for each check count using PCS
+        compiled_circuits = {}
+        metadata_dict = {}
+
+        for num_checks in sorted(check_counts):
+            self.logger.info(f"Compiling with {num_checks} checks")
+            qed_circuit, metadata = self._compile_pcs(circuit, num_checks, **kwargs)
+            compiled_circuits[num_checks] = qed_circuit
+            metadata_dict[num_checks] = metadata
+
+        self.logger.info(f"PCE compilation complete for {len(compiled_circuits)} circuits")
+
+        return PCECompilationResult(
+            circuits=compiled_circuits,
+            strategy_used=QEDStrategy.PCS,
+            metadata=metadata_dict,
+        )
+
     def analyze_circuit(self, circuit: QuantumCircuit) -> Dict[str, Any]:
         """Analyze circuit properties relevant to QED strategy selection.
         
