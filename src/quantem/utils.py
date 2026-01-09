@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.'''
 
 import itertools
+import logging
 import pickle
 import math
 from qiskit.transpiler.basepasses import (
@@ -50,9 +51,7 @@ from quantem.pauli_checks import (
     add_pauli_checks
 )
 
-###################################
-# Automatic check injection utils.
-###################################
+logger = logging.getLogger(__name__)
 
 
 def check_to_ancilla_free_circ(check_str, num_qubits):
@@ -68,7 +67,6 @@ def check_to_ancilla_free_circ(check_str, num_qubits):
         elif op.upper() == "Z":
             if target not in mapping:
                 mapping[target] = "Z"
-        # print("mapping =", mapping)
     return qc, mapping
 
 
@@ -140,7 +138,7 @@ def convert_to_ancilla_free_PCS_circ(
         except Exception as e:
             continue
     if len(selected_pairs) < num_checks:
-        print("Warning: Less checks found than required.")
+        logger.warning("Less checks found than required: %d < %d", len(selected_pairs), num_checks)
 
     final_left_check_circ = QuantumCircuit(num_qubits)
     for lm in left_mappings_list:
@@ -199,16 +197,16 @@ def convert_to_PCS_circ(circ, num_qubits, num_checks, barriers=False, reverse=Fa
             result = test_finder.find_checks_sym(pauli_group_elem=string_list)
             p1_list.append([result.p1_str, result.p2_str])
             found_checks += 1
-            print(f"Found check {found_checks}: {result.p1_str}, {result.p2_str}")
+            logger.debug("Found check %d: %s, %s", found_checks, result.p1_str, result.p2_str)
             if found_checks >= num_checks:
-                print("Required number of checks found.")
-                print("p1_list = ", p1_list)
+                logger.debug("Required number of checks found")
+                logger.debug("p1_list = %s", p1_list)
                 break  # Stop the loop if we have found enough checks
         except Exception as e:
             continue  # Skip to the next iteration if an error occurs
 
     if found_checks < num_checks:
-        print("Warning: Less checks found than required.")
+        logger.warning("Less checks found than required: %d < %d", found_checks, num_checks)
 
     initial_layout = {}
     for i in range(0, num_qubits):
@@ -415,9 +413,9 @@ def convert_to_PCS_circ_largest_clifford(circ, num_qubits, num_checks):
 
     start_idx, end_idx, clifford_block_slices = find_largest_clifford_block(slices)
     if start_idx is None:
-        print("No contiguous Clifford block found. Returning original circuit.")
+        logger.info("No contiguous Clifford block found. Returning original circuit")
         return None, circ
-    print(f"Largest Clifford block is from slice {start_idx} to {end_idx}.")
+    logger.debug("Largest Clifford block is from slice %d to %d", start_idx, end_idx)
 
     protected_block = combine_slices(clifford_block_slices, include_barriers=False)
 
@@ -504,20 +502,16 @@ def generate_mapping_ranges_dfs(num_qubits_circuit, num_qubits_backend, coupling
             continue
         region = []
         stack = [start]
-        # print("Starting DFS from node", start)
         while stack and len(region) < num_qubits_circuit:
             node = stack.pop()
             if node not in used:
                 used.add(node)
                 region.append(node)
-                # print("Visited node", node, "-> region:", region)
                 for neighbor in graph.get(node, []):
                     if neighbor not in used:
-                        # print("  Adding neighbor", neighbor, "to stack")
                         stack.append(neighbor)
         if len(region) == num_qubits_circuit:
             ranges.append(region)
-            # print("Complete region found:", region)
         if len(used) >= num_qubits_backend:
             break
     return ranges
@@ -533,20 +527,16 @@ def generate_mapping_ranges_bfs(num_qubits_circuit, num_qubits_backend, coupling
             continue
         region = []
         queue = deque([start])
-        # print("Starting BFS from node", start)
         while queue and len(region) < num_qubits_circuit:
             node = queue.popleft()
             if node not in used:
                 used.add(node)
                 region.append(node)
-                # print("Visited node", node, "-> region:", region)
                 for neighbor in graph.get(node, []):
                     if neighbor not in used:
-                        # print("  Adding neighbor", neighbor, "to queue")
                         queue.append(neighbor)
         if len(region) == num_qubits_circuit:
             ranges.append(region)
-            # print("Complete region found:", region)
         if len(used) >= num_qubits_backend:
             break
     return ranges
