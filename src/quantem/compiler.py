@@ -37,9 +37,6 @@ if TYPE_CHECKING:
     from typing import Mapping, Sequence
     from qiskit import QuantumCircuit
 
-# ---------------------------------------------------------------------------- #
-# Configuration and Data Classes
-# ---------------------------------------------------------------------------- #
 
 CLIFFORD_NAMES = {
     "x",
@@ -55,6 +52,13 @@ CLIFFORD_NAMES = {
 
 DEFAULT_CLIFFORD_THRESHOLD = 0.4
 DEFAULT_NUM_CHECKS = 2
+
+__all__ = [
+    "QEDCompiler",
+    "QEDStrategy",
+    "CompilationResult",
+    "PCECompilationResult",
+]
 
 
 class QEDStrategy(Enum):
@@ -109,10 +113,6 @@ class PCECompilationResult:
     circuits: Dict[int, QuantumCircuit]
     strategy_used: QEDStrategy
     metadata: Dict[int, Dict[str, Any]]
-
-# ---------------------------------------------------------------------------- #
-# QED Compiler Class
-# ---------------------------------------------------------------------------- #
 
 
 class QEDCompiler:
