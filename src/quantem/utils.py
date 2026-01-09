@@ -54,7 +54,21 @@ from quantem.pauli_checks import (
 logger = logging.getLogger(__name__)
 
 
-def check_to_ancilla_free_circ(check_str, num_qubits):
+def check_to_ancilla_free_circ(check_str: str, num_qubits: int) -> tuple[QuantumCircuit, dict]:
+    """Convert a Pauli check string into an ancilla-free measurement circuit.
+    
+    This function generates a circuit that rotates the basis of target qubits to 
+    measure the specified Pauli operator (X or Z) in the standard Z-basis.
+
+    Args:
+        check_str: String representation of the check (e.g., "+1IXZ").
+        num_qubits: Total number of qubits in the circuit.
+
+    Returns:
+        tuple: (circuit, mapping)
+            - circuit: QuantumCircuit implementing basis rotations.
+            - mapping: Dictionary mapping qubit indices to their Pauli basis ('X' or 'Z').
+    """
     op_str = check_str[2:]
     qc = QuantumCircuit(num_qubits)
     mapping = {}
@@ -71,8 +85,38 @@ def check_to_ancilla_free_circ(check_str, num_qubits):
 
 
 def convert_to_ancilla_free_PCS_circ(
-    circ, num_qubits, num_checks, barriers=False, reverse=False, only_X_checks=False, only_Z_checks=False
-):
+    circ: QuantumCircuit, 
+    num_qubits: int, 
+    num_checks: int, 
+    barriers: bool = False, 
+    reverse: bool = False, 
+    only_X_checks: bool = False, 
+    only_Z_checks: bool = False
+) -> tuple[List[str], QuantumCircuit, List[dict], List[dict]]:
+    """Implement Ancilla-Free Pauli Check Sandwiching (AFPC).
+    
+    Finds and inserts Pauli checks that can be measured directly on data qubits
+    without using extra ancilla qubits.
+
+    Args:
+        circ: Input quantum circuit.
+        num_qubits: Number of qubits in the circuit.
+        num_checks: Number of checks to generate.
+        barriers: Whether to add barriers around the original circuit.
+        reverse: If True, prioritizes higher-weight checks.
+        only_X_checks: Restrict to X-type checks only.
+        only_Z_checks: Restrict to Z-type checks only.
+
+    Returns:
+        tuple: (sign_list, final_circ, left_mappings, right_mappings)
+            - sign_list: List of check signs ("+1" or "-1").
+            - final_circ: Protected circuit with checks.
+            - left_mappings: List of qubit mappings for left checks.
+            - right_mappings: List of qubit mappings for right checks.
+            
+    Raises:
+        ValueError: If both only_X_checks and only_Z_checks are True.
+    """
 
     if only_X_checks and only_Z_checks:
         raise ValueError("Cannot specify both only_X_checks and only_Z_checks")
@@ -161,7 +205,37 @@ def convert_to_ancilla_free_PCS_circ(
     return sign_list, final_circ, left_mappings_list, right_mappings_list
 
 
-def convert_to_PCS_circ(circ, num_qubits, num_checks, barriers=False, reverse=False, only_X_checks=False, only_Z_checks=False):
+def convert_to_PCS_circ(
+    circ: QuantumCircuit, 
+    num_qubits: int, 
+    num_checks: int, 
+    barriers: bool = False, 
+    reverse: bool = False, 
+    only_X_checks: bool = False, 
+    only_Z_checks: bool = False
+) -> tuple[List[str], QuantumCircuit]:
+    """Implement Pauli Check Sandwiching (PCS) with ancilla qubits.
+    
+    Wraps the input circuit with Pauli checks that propagate through the circuit
+    to detect errors. Uses additional ancilla qubits for syndrome measurement.
+
+    Args:
+        circ: The input quantum circuit to protect.
+        num_qubits: Number of compute qubits.
+        num_checks: Number of check layers to insert.
+        barriers: Whether to add barriers around the component blocks.
+        reverse: If True, searches for checks in reverse order.
+        only_X_checks: Restrict to X-type right checks.
+        only_Z_checks: Restrict to Z-type right checks.
+
+    Returns:
+        tuple: (sign_list, final_circ)
+            - sign_list: List of check signs ("+1", "-1").
+            - final_circ: The protected circuit including check ancillas.
+            
+    Raises:
+        ValueError: If both only_X_checks and only_Z_checks are True.
+    """
     total_qubits = num_qubits + num_checks
 
     if only_X_checks and only_Z_checks:

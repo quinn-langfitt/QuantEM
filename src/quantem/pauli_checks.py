@@ -20,7 +20,7 @@ from qiskit import (
     QuantumCircuit,
     ClassicalRegister
 )
-from typing import List
+from typing import List, Dict
 from copy import deepcopy
 from qiskit.converters import circuit_to_dag
 
@@ -237,9 +237,15 @@ class ChecksFinder:
         else:
             assert False, "Overlooked a node operation."            
             
-def append_paulis_to_circuit(circuit, pauli_string):
-    """
-    Appends Pauli operations to the quantum circuit based on the pauli_string input.
+def append_paulis_to_circuit(circuit: QuantumCircuit, pauli_string: str) -> None:
+    """Append single-qubit Pauli gates to a circuit based on a string.
+
+    Iterates through the Pauli string (reversed) and applies the corresponding
+    gate (I, X, Y, Z) to each qubit.
+
+    Args:
+        circuit: The quantum circuit to modify.
+        pauli_string: String of Pauli operators (e.g. "IXZ").
     """
     for index, char in enumerate(reversed(pauli_string)):
         if char == 'I':
@@ -251,9 +257,23 @@ def append_paulis_to_circuit(circuit, pauli_string):
         elif char == 'Z':
             circuit.z(index)
             
-def append_control_paulis_to_circuit(circuit, pauli_string, ancilla_index, mapping):
-    """
-    Appends controlled Pauli operations to the quantum circuit based on the pauli_string input.
+def append_control_paulis_to_circuit(
+    circuit: QuantumCircuit, 
+    pauli_string: str, 
+    ancilla_index: int, 
+    mapping: Dict[int, int]
+) -> None:
+    """Append controlled-Pauli gates to a circuit.
+
+    The gates are controlled by `ancilla_index` and target the qubits specified
+    by `mapping`.
+
+    Args:
+        circuit: The quantum circuit to modify.
+        pauli_string: String of Pauli operators to be controlled.
+        ancilla_index: Index of the control qubit (ancilla).
+        mapping: Dictionary mapping logical qubit indices (from string position) 
+                 to physical qubit indices in the circuit.
     """
     for orign_index, char in enumerate(reversed(pauli_string)):
         index = mapping[orign_index]
@@ -283,7 +303,46 @@ def verify_circuit_with_pauli_checks(circuit, left_check, right_check):
     return verification_circuit, original_operator.equiv(verification_operator)
 
 
-def add_pauli_checks(circuit, left_check, right_check, initial_layout, final_layout, pauli_meas = False, single_side = False, qubit_measure = False, ancilla_measure = False, barriers = False, increase_size = 0):
+def add_pauli_checks(
+    circuit: QuantumCircuit, 
+    left_check: str, 
+    right_check: str, 
+    initial_layout: Dict[int, int], 
+    final_layout: Dict[int, int], 
+    pauli_meas: bool = False, 
+    single_side: bool = False, 
+    qubit_measure: bool = False, 
+    ancilla_measure: bool = False, 
+    barriers: bool = False, 
+    increase_size: int = 0
+) -> QuantumCircuit:
+    """Add Pauli checks to a quantum circuit using an ancilla qubit.
+
+    This function adds a "check sandwich" to the circuit:
+    1. A check prepared on an ancilla (via controlled Pauli gates).
+    2. The original circuit operations.
+    3. A second check on the ancilla (completing the sandwich).
+
+    The ancilla is initialized in superposition (H gate), entangled with the check 
+    operators (Left Check), then the circuit runs, and finally the ancilla is 
+    disentangled (Right Check) and measured to detect errors.
+
+    Args:
+        circuit: The input quantum circuit.
+        left_check: Pauli string for the pre-circuit check.
+        right_check: Pauli string for the post-circuit check.
+        initial_layout: Mapping of logical to physical qubits for the left check.
+        final_layout: Mapping of logical to physical qubits for the right check.
+        pauli_meas: If True, assumes input is a measurement circuit (skips H gates). (Default: False)
+        single_side: If True, only apply the left check. (Default: False)
+        qubit_measure: If True, adds measurement to all data qubits. (Default: False)
+        ancilla_measure: If True, adds measurement to the check ancilla. (Default: False)
+        barriers: If True, adds barriers around the circuit block. (Default: False)
+        increase_size: Unused parameter for resizing.
+
+    Returns:
+        QuantumCircuit: The new circuit with the added Pauli check.
+    """
     # initial_layout: mapping from original circuit index to the physical qubit index
     # final_layout: mapping from original circuit index to the final physical qubit index
     if initial_layout is None:
