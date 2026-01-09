@@ -32,10 +32,11 @@ sys.modules["quantem.rust.sabre"] = rust.sabre
 
 # ==== Public API ==== #
 
-from .compiler import QEDCompiler, QEDStrategy, CompilationResult
+from .compiler import QEDCompiler, QEDStrategy, CompilationResult, PCECompilationResult
 
 __all__ = [
     "QEDCompiler",
-    "QEDStrategy", 
+    "QEDStrategy",
     "CompilationResult",
+    "PCECompilationResult",
 ]

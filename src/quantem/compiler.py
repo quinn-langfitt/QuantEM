@@ -56,6 +56,13 @@ CLIFFORD_NAMES = {
 DEFAULT_CLIFFORD_THRESHOLD = 0.4
 DEFAULT_NUM_CHECKS = 2
 
+__all__ = [
+    "QEDCompiler",
+    "QEDStrategy",
+    "CompilationResult",
+    "PCECompilationResult",
+]
+
 
 class QEDStrategy(Enum):
     """Available quantum error detection strategies."""
