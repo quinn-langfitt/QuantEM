@@ -382,9 +382,8 @@ def single_side_postprocess(input_dict, right_checks, qubits, layer_index):
     for index in range(0, len(right_checks)):
         check = right_checks[index]
         if check == 'Z':
-            ctrl_index = index # qubits - index - 1 
+            ctrl_index = index # qubits - index - 1
             targ_index = - 2 * layer_index - 1
-            print(ctrl_index, targ_index)
             output_dict = update_cnot_dist(output_dict, ctrl_index, targ_index)
             # change the corresponding qubit in the distribution
     return output_dict
@@ -462,7 +461,6 @@ def find_largest_common(curr_pauli, indexed_list):
         if val > max_val:
             best_id = pauli_idx
             max_val = val
-    print(max_val, best_id)
     return max_val, best_id
 
 def remove_pauli(pauli, sorted_list):
