@@ -25,6 +25,6 @@ pip install .[notebook]
 + **Pauli Check Sandwiching, PCS**: PCS is technique used to detect and mitigate errors. PCS surrounds a payload circuit, $𝑈$ , with controlled Pauli operator checks that are selected such that $RUL = 𝑈$ . Errors on $𝑈$ can be detected
 on an ancilla through phase kickback. The errors that are detected in $U$ anticommute with the Pauli operators in the selected checks.
 + **Ancilla-free Pauli Checks, AFPC**: AFPC does not include an ancilla that is measured for syndrome information. Instead, syndrome information is read out directly from the qubit targeted by Pauli checks. AFPC is effective for application-specific error characterization.
-+ **Pauli Check Extrapolation, PCE** (*Coming Soon*)
++ **Pauli Check Extrapolation, PCE**: PCE builds on Pauli check techniques to mitigate errors by running a payload circuit with varying numbers of Pauli checks and extrapolating the resulting expectation values to the maximum check limit. Fitting a model across the check counts (e.g. linear or exponential) yields an error-mitigated estimate of the ideal expectation value. See the [PCE demo notebook](example_notebooks/pce_demo.ipynb) for a walkthrough.
 + **Iceberg Code**: The Iceberg code is a distance 2 code, [[k+2, k, 2]] for even k, that scales efficiently with the number of 
 logical qubits. The Iceberg code requires only two additional qubits for the encoded state. The code implements fault-tolerant initial state preparation and syndrome measurement circuits capable of detecting any single-qubit error.
