@@ -33,7 +33,7 @@ logical qubits. The Iceberg code requires only two additional qubits for the enc
 
 ## Citation
 
-If `QuantEM` is useful in your work, we'd be grateful if you cited our [paper](https://arxiv.org/abs/2509.15505). A BibTeX entry is also available in [`citation.bib`](citation.bib):
+Please consider citing our paper if you find QuantEM useful in your research: [paper](https://arxiv.org/abs/2509.15505).
 
 ```bibtex
 @misc{liu2025quantemquantumerrormanagement,
