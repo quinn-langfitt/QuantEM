@@ -18,11 +18,13 @@ Iceberg quantum‑error‑detection code utilities
 """
 
 from types import SimpleNamespace
-from typing import Dict, Tuple, List
+from typing import Dict, Tuple, List, Optional
 
 from qiskit import transpile
 from qiskit.circuit import QuantumCircuit, QuantumRegister, ClassicalRegister, Instruction
 from qiskit.converters import circuit_to_dag, dag_to_circuit
+
+from quantem.validation import normalize_iceberg_options, validate_quantum_circuit
 
 
 class Syndrome_gate(Instruction):
@@ -236,8 +238,8 @@ def build_iceberg_circuit(
     logical_qc: QuantumCircuit,
     optimize_level: int = 3,
     attach_readout: bool = True,
-    syndrome_interval: int = 5,
-    total_syndrome_cycles: int = 5,
+    syndrome_interval: Optional[int] = None,
+    total_syndrome_cycles: Optional[int] = None,
 ) -> Tuple[QuantumCircuit, SimpleNamespace]:
     """
     End‑to‑end wrapper:
@@ -255,9 +257,11 @@ def build_iceberg_circuit(
     attach_readout
         If True, add logical‑state measurement block.
     syndrome_interval
-        The circuit depth between syndrome measurement
+        The circuit depth between syndrome measurements. If neither scheduling
+        argument is supplied, defaults to 5.
     total_syndrome_cycles
-        The total number of syndromes measurements which evenly divide the circuit depth
+        A target number of syndrome cycles used to derive the interval. This
+        cannot be combined with a positive ``syndrome_interval``.
 
     Raises
     ------
@@ -273,45 +277,37 @@ def build_iceberg_circuit(
     regs
         SimpleNamespace with named QuantumRegisters.
     """
+    validate_quantum_circuit(logical_qc, parameter_name="logical_qc")
+    raw_options = {
+        "optimize_level": optimize_level,
+        "attach_readout": attach_readout,
+    }
+    if syndrome_interval is not None:
+        raw_options["syndrome_interval"] = syndrome_interval
+    if total_syndrome_cycles is not None:
+        raw_options["total_syndrome_cycles"] = total_syndrome_cycles
+    options = normalize_iceberg_options(raw_options)
+
     if logical_qc.num_qubits == 0 or logical_qc.num_qubits % 2 != 0:
         raise ValueError(
             "Iceberg requires a positive, even number of logical qubits"
         )
-    if isinstance(optimize_level, bool) or optimize_level not in range(4):
-        raise ValueError("optimize_level must be an integer between 0 and 3")
-    if not isinstance(attach_readout, bool):
-        raise TypeError("attach_readout must be a bool")
-    if isinstance(syndrome_interval, bool) or not isinstance(syndrome_interval, int):
-        raise TypeError("syndrome_interval must be a non-negative integer")
-    if syndrome_interval < 0:
-        raise ValueError("syndrome_interval must be a non-negative integer")
-    if (
-        isinstance(total_syndrome_cycles, bool)
-        or not isinstance(total_syndrome_cycles, int)
-    ):
-        raise TypeError("total_syndrome_cycles must be a non-negative integer")
-    if total_syndrome_cycles < 0:
-        raise ValueError("total_syndrome_cycles must be a non-negative integer")
 
     # 1 — transpile
     decomposed = transpile(
         logical_qc,
         basis_gates=["rx", "rz", "rxx", "rzz"],
-        optimization_level=optimize_level,
+        optimization_level=options.optimize_level,
     )
 
     # Validate or derive syndrome interval
+    syndrome_interval = options.syndrome_interval
     if syndrome_interval == 0:
-        if total_syndrome_cycles == 0:
-            raise ValueError(
-                "Either `syndrome_interval` or `total_syndrome_cycles` "
-                "must be specified."
-            )
-        if decomposed.depth() < total_syndrome_cycles:
+        if decomposed.depth() < options.total_syndrome_cycles:
             raise ValueError(
                 "total_syndrome_cycles cannot exceed the transpiled circuit depth"
             )
-        syndrome_interval = decomposed.depth() // total_syndrome_cycles
+        syndrome_interval = decomposed.depth() // options.total_syndrome_cycles
     # add logical syndrome gates as place holder
     log_qc = add_logical_syndrome_gates(decomposed, syndrome_interval)
 
@@ -325,7 +321,7 @@ def build_iceberg_circuit(
     new_phys_qc = insert_syndrome_measurement(phys_qc, regs)
 
     # 4 — optional extras
-    if attach_readout:
+    if options.attach_readout:
         add_logical_measurement(new_phys_qc, regs)
 
     return new_phys_qc, regs

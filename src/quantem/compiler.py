@@ -20,7 +20,7 @@ quantum error detection into quantum circuits.
 """
 
 import logging
-from dataclasses import dataclass
+from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
@@ -32,9 +32,13 @@ from quantem.utils import (
     find_largest_clifford_block,
 )
 from quantem.validation import (
+    IcebergOptions,
     validate_check_counts,
     validate_clifford_threshold,
     validate_num_checks,
+    validate_quantum_circuit,
+    normalize_iceberg_options,
+    normalize_pauli_check_options,
 )
 from qiskit_addon_utils.slicing import slice_by_depth
 
@@ -180,10 +184,10 @@ class QEDCompiler:
             gateset: Supported gate set (for future use)
             num_checks: Number of Pauli checks (uses default if None)
             **kwargs: Additional strategy-specific parameters
-                     - barriers (bool): Add barriers around protected circuit (default: True)
-                     - reverse (bool): Search for checks in reverse weight order (default: False)
-                     - only_X_checks (bool): Only use X-type right Pauli checks (default: False)
-                     - only_Z_checks (bool): Only use Z-type right Pauli checks (default: False)
+                PCS/AFPC accept ``barriers``, ``reverse``, ``only_X_checks``,
+                and ``only_Z_checks``. Iceberg accepts ``optimize_level``,
+                ``attach_readout``, ``syndrome_interval``, and
+                ``total_syndrome_cycles``.
 
         Returns:
             CompilationResult with protected circuit and metadata
@@ -192,10 +196,16 @@ class QEDCompiler:
             TypeError: If a parameter has an invalid type.
             ValueError: If a parameter value is invalid or the requested checks
                 cannot be constructed.
+            NotImplementedError: If layout or gateset is supplied before those
+                compiler features are implemented.
         """
-        if num_checks is None:
-            num_checks = self.default_num_checks
-        
+        validate_quantum_circuit(circuit)
+
+        if layout is not None:
+            raise NotImplementedError("layout-aware compilation is not implemented")
+        if gateset is not None:
+            raise NotImplementedError("gateset-aware compilation is not implemented")
+
         # Validate strategy parameter
         if not isinstance(strategy, QEDStrategy):
             raise TypeError(f"strategy must be a QEDStrategy enum, got {type(strategy).__name__}")
@@ -205,21 +215,30 @@ class QEDCompiler:
             strategy = self._select_strategy(circuit)
 
         if strategy in (QEDStrategy.PCS, QEDStrategy.AFPC):
+            if num_checks is None:
+                num_checks = self.default_num_checks
             num_checks = validate_num_checks(num_checks)
+            options = normalize_pauli_check_options(
+                kwargs, strategy_name=strategy.value.upper()
+            )
+        elif strategy == QEDStrategy.ICEBERG:
+            if num_checks is not None:
+                raise TypeError("num_checks is not supported by ICEBERG")
+            options = normalize_iceberg_options(kwargs)
             
         self.logger.info(f"Compiling circuit with {strategy.value.upper()} strategy")
         
         # Apply chosen strategy
         if strategy == QEDStrategy.PCS:
             result_circuit, metadata = self._compile_pcs(
-                circuit, num_checks, **kwargs
+                circuit, num_checks, **asdict(options)
             )
         elif strategy == QEDStrategy.AFPC:
             result_circuit, metadata = self._compile_afpc(
-                circuit, num_checks, **kwargs
+                circuit, num_checks, **asdict(options)
             )
         elif strategy == QEDStrategy.ICEBERG:
-            result_circuit, metadata = self._compile_iceberg(circuit, **kwargs)
+            result_circuit, metadata = self._compile_iceberg(circuit, options)
         else:
             raise ValueError(f"Unknown strategy: {strategy}")
             
@@ -268,11 +287,9 @@ class QEDCompiler:
             >>> from quantem.pauli_check_extrapolation import analyze_pce_results
             >>> result = analyze_pce_results(expectations, n_max=4)
         """
+        validate_quantum_circuit(circuit)
         check_counts = validate_check_counts(check_counts)
-
-        # Validate check type parameters
-        if kwargs.get('only_X_checks', False) and kwargs.get('only_Z_checks', False):
-            raise ValueError("Cannot specify both only_X_checks and only_Z_checks")
+        options = normalize_pauli_check_options(kwargs, strategy_name="PCE")
 
         self.logger.info(
             f"Compiling circuit for PCE with {len(check_counts)} check counts: {check_counts}"
@@ -284,7 +301,9 @@ class QEDCompiler:
 
         for num_checks in sorted(check_counts):
             self.logger.info(f"Compiling with {num_checks} checks")
-            qed_circuit, metadata = self._compile_pcs(circuit, num_checks, **kwargs)
+            qed_circuit, metadata = self._compile_pcs(
+                circuit, num_checks, **asdict(options)
+            )
             compiled_circuits[num_checks] = qed_circuit
             metadata_dict[num_checks] = metadata
 
@@ -305,6 +324,7 @@ class QEDCompiler:
         Returns:
             Dictionary with analysis results
         """
+        validate_quantum_circuit(circuit)
         slices = slice_by_depth(circuit, 1)
         total_depth = len(slices)
         
@@ -314,16 +334,26 @@ class QEDCompiler:
             start, end, block = find_largest_clifford_block(slices)
             block_depth = len(block) if start is not None else 0
             clifford_fraction = block_depth / total_depth
-            
+
+        recommended_strategy = (
+            QEDStrategy.PCS
+            if clifford_fraction >= self.clifford_threshold
+            else QEDStrategy.ICEBERG
+        )
+        # AUTO must not select a strategy whose public preconditions already
+        # rule out the input circuit.
+        if (
+            recommended_strategy == QEDStrategy.ICEBERG
+            and (circuit.num_qubits == 0 or circuit.num_qubits % 2 != 0)
+        ):
+            recommended_strategy = QEDStrategy.PCS
+
         return {
             "total_depth": total_depth,
             "num_qubits": circuit.num_qubits,
             "num_gates": len(circuit.data),
             "clifford_block_fraction": clifford_fraction,
-            "recommended_strategy": (
-                QEDStrategy.PCS if clifford_fraction >= self.clifford_threshold 
-                else QEDStrategy.ICEBERG
-            ),
+            "recommended_strategy": recommended_strategy,
         }
     
     def _select_strategy(self, circuit: QuantumCircuit) -> QEDStrategy:
@@ -401,16 +431,16 @@ class QEDCompiler:
             raise RuntimeError(f"AFPC compilation failed: {e}") from e
     
     def _compile_iceberg(
-        self, circuit: QuantumCircuit, **kwargs
+        self, circuit: QuantumCircuit, options: IcebergOptions
     ) -> tuple[QuantumCircuit, Dict[str, Any]]:
         """Apply Iceberg code strategy."""
         try:
             qed_circuit, reg_bundle = build_iceberg_circuit(
                 circuit,
-                optimize_level=kwargs.get('optimize_level', 3),
-                attach_readout=kwargs.get('attach_readout', True),
-                syndrome_interval=kwargs.get('syndrome_interval', 5),
-                total_syndrome_cycles=kwargs.get('total_syndrome_cycles', 5),
+                optimize_level=options.optimize_level,
+                attach_readout=options.attach_readout,
+                syndrome_interval=options.syndrome_interval,
+                total_syndrome_cycles=options.total_syndrome_cycles,
             )
 
             qubit_overhead = qed_circuit.num_qubits - circuit.num_qubits

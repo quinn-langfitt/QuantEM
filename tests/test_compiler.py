@@ -2,10 +2,19 @@
 
 import pytest
 import numpy as np
+from dataclasses import asdict
 from typing import List
 from qiskit import QuantumCircuit
 
 from quantem import QEDCompiler, QEDStrategy, CompilationResult
+from quantem.validation import IcebergOptions
+
+
+class RecordingIcebergCompiler(QEDCompiler):
+    """Avoid circuit synthesis when testing request normalization."""
+
+    def _compile_iceberg(self, circuit, options: IcebergOptions):
+        return circuit.copy(), asdict(options)
 
 
 class TestQEDCompiler:
@@ -113,6 +122,78 @@ class TestQEDCompiler:
                 strategy=QEDStrategy.PCS,
                 num_checks=num_checks,
             )
+
+    @pytest.mark.parametrize("entry_point", ["compile", "compile_pce", "analyze"])
+    def test_public_entry_points_require_quantum_circuit(self, entry_point):
+        compiler = QEDCompiler()
+
+        with pytest.raises(TypeError, match="must be a QuantumCircuit"):
+            if entry_point == "compile":
+                compiler.compile("not a circuit", strategy=QEDStrategy.PCS)
+            elif entry_point == "compile_pce":
+                compiler.compile_pce("not a circuit", check_counts=[0])
+            else:
+                compiler.analyze_circuit("not a circuit")
+
+    @pytest.mark.parametrize(
+        ("strategy", "option"),
+        [
+            (QEDStrategy.PCS, {"barier": True}),
+            (QEDStrategy.AFPC, {"optimize_level": 1}),
+            (QEDStrategy.ICEBERG, {"only_X_checks": True}),
+        ],
+    )
+    def test_compile_rejects_unknown_or_misapplied_options(
+        self, simple_circuit, strategy, option
+    ):
+        compiler = QEDCompiler()
+
+        with pytest.raises(TypeError, match="unexpected .* option"):
+            compiler.compile(simple_circuit, strategy=strategy, **option)
+
+    @pytest.mark.parametrize(
+        ("option_name", "option_value"),
+        [
+            ("barriers", 1),
+            ("reverse", "false"),
+            ("only_X_checks", None),
+            ("only_Z_checks", 0),
+        ],
+    )
+    def test_pcs_options_require_strict_booleans(
+        self, simple_circuit, option_name, option_value
+    ):
+        compiler = QEDCompiler()
+
+        with pytest.raises(TypeError, match=f"{option_name} must be a bool"):
+            compiler.compile(
+                simple_circuit,
+                strategy=QEDStrategy.PCS,
+                **{option_name: option_value},
+            )
+
+    def test_iceberg_rejects_num_checks(self):
+        compiler = QEDCompiler()
+
+        with pytest.raises(TypeError, match="not supported by ICEBERG"):
+            compiler.compile(
+                QuantumCircuit(2),
+                strategy=QEDStrategy.ICEBERG,
+                num_checks=1,
+            )
+
+    @pytest.mark.parametrize("parameter_name", ["layout", "gateset"])
+    def test_future_parameters_fail_instead_of_being_ignored(
+        self, simple_circuit, parameter_name
+    ):
+        compiler = QEDCompiler()
+
+        with pytest.raises(NotImplementedError, match="not implemented"):
+            compiler.compile(
+                simple_circuit,
+                strategy=QEDStrategy.PCS,
+                **{parameter_name: {}},
+            )
     
     def test_circuit_analysis(self, simple_circuit):
         """Test circuit analysis functionality."""
@@ -146,6 +227,16 @@ class TestQEDCompiler:
         print(result_clifford)
         assert isinstance(result_clifford, CompilationResult)
         assert result_clifford.strategy_used in [QEDStrategy.PCS, QEDStrategy.ICEBERG]
+
+    def test_auto_does_not_select_infeasible_iceberg_width(self):
+        compiler = QEDCompiler()
+        result = compiler.compile(
+            QuantumCircuit(1),
+            strategy=QEDStrategy.AUTO,
+            num_checks=0,
+        )
+
+        assert result.strategy_used == QEDStrategy.PCS
     
     def test_pcs_compilation(self, simple_circuit):
         """Test PCS strategy compilation."""
@@ -211,15 +302,53 @@ class TestQEDCompiler:
                 strategy=QEDStrategy.ICEBERG,
             )
 
-    @pytest.mark.parametrize("optimize_level", [-1, 4, True])
-    def test_iceberg_rejects_invalid_optimization_level(self, optimize_level):
+    @pytest.mark.parametrize(
+        ("optimize_level", "expected_error"),
+        [(-1, ValueError), (4, ValueError), (True, TypeError), (1.5, TypeError)],
+    )
+    def test_iceberg_rejects_invalid_optimization_level(
+        self, optimize_level, expected_error
+    ):
         compiler = QEDCompiler()
-        with pytest.raises(ValueError, match="between 0 and 3"):
+        with pytest.raises(expected_error, match="between 0 and 3"):
             compiler.compile(
                 QuantumCircuit(2),
                 strategy=QEDStrategy.ICEBERG,
                 optimize_level=optimize_level,
             )
+
+    def test_iceberg_options_require_strict_boolean(self):
+        compiler = QEDCompiler()
+
+        with pytest.raises(TypeError, match="attach_readout must be a bool"):
+            compiler.compile(
+                QuantumCircuit(2),
+                strategy=QEDStrategy.ICEBERG,
+                attach_readout=1,
+            )
+
+    def test_iceberg_schedule_modes_are_exclusive(self):
+        compiler = QEDCompiler()
+
+        with pytest.raises(ValueError, match="either syndrome_interval"):
+            compiler.compile(
+                QuantumCircuit(2),
+                strategy=QEDStrategy.ICEBERG,
+                syndrome_interval=2,
+                total_syndrome_cycles=2,
+            )
+
+    def test_iceberg_total_cycles_selects_cycle_count_mode(self):
+        compiler = RecordingIcebergCompiler()
+
+        result = compiler.compile(
+            QuantumCircuit(2),
+            strategy=QEDStrategy.ICEBERG,
+            total_syndrome_cycles=3,
+        )
+
+        assert result.metadata["syndrome_interval"] == 0
+        assert result.metadata["total_syndrome_cycles"] == 3
 
     def test_iceberg_rejects_impossible_syndrome_schedule(self):
         compiler = QEDCompiler()

@@ -140,12 +140,34 @@ def test_compile_pce_non_integer_check_counts(invalid_count):
         compiler.compile_pce(circuit, check_counts=[0, invalid_count])
 
 
+@pytest.mark.parametrize("invalid_counts", [None, "012"])
+def test_compile_pce_requires_check_count_sequence(invalid_counts):
+    compiler = MockCompiler()
+
+    with pytest.raises(TypeError, match="must be a sequence"):
+        compiler.compile_pce(
+            QuantumCircuit(2),
+            check_counts=invalid_counts,
+        )
+
+
 def test_compile_pce_duplicate_check_counts():
     compiler = MockCompiler()
     circuit = QuantumCircuit(2)
 
     with pytest.raises(ValueError, match="must not contain duplicate"):
         compiler.compile_pce(circuit, check_counts=[0, 1, 1])
+
+
+def test_compile_pce_rejects_unknown_options():
+    compiler = MockCompiler()
+
+    with pytest.raises(TypeError, match="unexpected PCE option.*barier"):
+        compiler.compile_pce(
+            QuantumCircuit(2),
+            check_counts=[0],
+            barier=True,
+        )
 
 
 def test_compile_pce_zero_check_baseline():
