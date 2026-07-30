@@ -33,12 +33,15 @@ sys.modules["quantem.rust.sabre"] = rust.sabre
 # ==== Public API ==== #
 
 from .compiler import QEDCompiler, QEDStrategy, CompilationResult, PCECompilationResult
-from .contracts import CompilationContractError
+from .validation import InvalidCompilerOutputError, verify_pauli_check
+from .pauli_checks import PauliCheck
 
 __all__ = [
     "QEDCompiler",
     "QEDStrategy",
     "CompilationResult",
     "PCECompilationResult",
-    "CompilationContractError",
+    "InvalidCompilerOutputError",
+    "PauliCheck",
+    "verify_pauli_check",
 ]

@@ -7,12 +7,13 @@ from typing import List
 from qiskit import QuantumCircuit
 
 from quantem import (
-    CompilationContractError,
     CompilationResult,
+    InvalidCompilerOutputError,
+    PauliCheck,
     QEDCompiler,
     QEDStrategy,
 )
-from quantem.validation import IcebergOptions
+from quantem.validation.compiler_inputs import IcebergOptions
 
 
 class RecordingIcebergCompiler(QEDCompiler):
@@ -34,6 +35,19 @@ class BrokenPCSMetadataCompiler(QEDCompiler):
         return output, metadata
 
 
+class BrokenPCSPhaseCompiler(QEDCompiler):
+    """Return a PCS result whose legacy sign disagrees with its check record."""
+
+    def _compile_pcs(self, circuit, num_checks, **kwargs):
+        output, metadata = super()._compile_pcs(
+            circuit, num_checks, **kwargs
+        )
+        metadata["sign_list"][0] = (
+            "-1" if metadata["sign_list"][0] == "+1" else "+1"
+        )
+        return output, metadata
+
+
 class MutatingPCSCompiler(QEDCompiler):
     """Violate the public guarantee that compilation preserves its input."""
 
@@ -41,6 +55,7 @@ class MutatingPCSCompiler(QEDCompiler):
         circuit.x(0)
         return circuit.copy(), {
             "sign_list": [],
+            "pauli_checks": [],
             "num_checks": 0,
             "ancilla_qubits": 0,
             "total_qubits": circuit.num_qubits,
@@ -54,6 +69,7 @@ class AliasingPCSCompiler(QEDCompiler):
     def _compile_pcs(self, circuit, num_checks, **kwargs):
         return circuit, {
             "sign_list": [],
+            "pauli_checks": [],
             "num_checks": 0,
             "ancilla_qubits": 0,
             "total_qubits": circuit.num_qubits,
@@ -320,9 +336,14 @@ class TestQEDCompiler:
         
         # Check metadata
         assert "sign_list" in result.metadata
+        assert "pauli_checks" in result.metadata
         assert "num_checks" in result.metadata
         assert "ancilla_qubits" in result.metadata
         assert result.metadata["num_checks"] == 2
+        assert all(
+            isinstance(check, PauliCheck)
+            for check in result.metadata["pauli_checks"]
+        )
     
     def test_afpc_compilation(self, simple_circuit):
         """Test AFPC strategy compilation."""
@@ -460,12 +481,12 @@ class TestQEDCompiler:
         assert isinstance(result.strategy_used, QEDStrategy)
         assert isinstance(result.metadata, dict)
 
-    def test_pcs_contract_detects_false_metadata(self, simple_circuit):
+    def test_pcs_output_validation_detects_false_metadata(self, simple_circuit):
         compiler = BrokenPCSMetadataCompiler()
 
         with pytest.raises(
-            CompilationContractError,
-            match="PCS contract violation.*total_qubits",
+            InvalidCompilerOutputError,
+            match="PCS produced an invalid compiler output.*total_qubits",
         ):
             compiler.compile(
                 simple_circuit,
@@ -473,13 +494,28 @@ class TestQEDCompiler:
                 num_checks=1,
             )
 
-    def test_pcs_contract_detects_input_mutation(self):
+    def test_pcs_output_validation_detects_phase_metadata_disagreement(
+        self, simple_circuit
+    ):
+        compiler = BrokenPCSPhaseCompiler()
+
+        with pytest.raises(
+            InvalidCompilerOutputError,
+            match="PCS produced an invalid compiler output.*does not match.*phase",
+        ):
+            compiler.compile(
+                simple_circuit,
+                strategy=QEDStrategy.PCS,
+                num_checks=1,
+            )
+
+    def test_pcs_output_validation_detects_input_mutation(self):
         compiler = MutatingPCSCompiler()
         circuit = QuantumCircuit(1)
 
         with pytest.raises(
-            CompilationContractError,
-            match="PCS contract violation.*input circuit was mutated",
+            InvalidCompilerOutputError,
+            match="PCS produced an invalid compiler output.*input circuit was mutated",
         ):
             compiler.compile(
                 circuit,
@@ -487,12 +523,12 @@ class TestQEDCompiler:
                 num_checks=0,
             )
 
-    def test_pcs_contract_detects_output_alias(self):
+    def test_pcs_output_validation_detects_output_alias(self):
         compiler = AliasingPCSCompiler()
 
         with pytest.raises(
-            CompilationContractError,
-            match="PCS contract violation.*must not alias",
+            InvalidCompilerOutputError,
+            match="PCS produced an invalid compiler output.*must not alias",
         ):
             compiler.compile(
                 QuantumCircuit(1),
@@ -500,12 +536,14 @@ class TestQEDCompiler:
                 num_checks=0,
             )
 
-    def test_afpc_contract_detects_incomplete_mappings(self, simple_circuit):
+    def test_afpc_output_validation_detects_incomplete_mappings(
+        self, simple_circuit
+    ):
         compiler = BrokenAFPCMappingsCompiler()
 
         with pytest.raises(
-            CompilationContractError,
-            match="AFPC contract violation.*right_mappings",
+            InvalidCompilerOutputError,
+            match="AFPC produced an invalid compiler output.*right_mappings",
         ):
             compiler.compile(
                 simple_circuit,
@@ -513,14 +551,14 @@ class TestQEDCompiler:
                 num_checks=1,
             )
 
-    def test_iceberg_contract_detects_incomplete_register_bundle(
+    def test_iceberg_output_validation_detects_incomplete_register_bundle(
         self, qaoa_circuit
     ):
         compiler = BrokenIcebergRegistersCompiler()
 
         with pytest.raises(
-            CompilationContractError,
-            match=r"ICEBERG contract violation.*register_bundle\.b",
+            InvalidCompilerOutputError,
+            match=r"ICEBERG produced an invalid compiler output.*register_bundle\.b",
         ):
             compiler.compile(
                 qaoa_circuit,

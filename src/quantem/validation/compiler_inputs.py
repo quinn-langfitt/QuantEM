@@ -1,4 +1,4 @@
-"""Shared validation helpers for QuantEM's public compilation contracts."""
+"""Validation and normalization for QuantEM compiler inputs."""
 
 from __future__ import annotations
 

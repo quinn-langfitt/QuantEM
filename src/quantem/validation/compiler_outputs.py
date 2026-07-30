@@ -1,4 +1,4 @@
-"""Postcondition contracts for QuantEM compiler transformations."""
+"""Consistency validation for QuantEM compiler outputs."""
 
 from __future__ import annotations
 
@@ -7,16 +7,20 @@ from typing import Any
 
 from qiskit.circuit import QuantumCircuit
 
+from quantem.pauli_checks import PauliCheck
 
-class CompilationContractError(RuntimeError):
-    """Raised when a compiler transformation violates an internal guarantee."""
+
+class InvalidCompilerOutputError(RuntimeError):
+    """Raised when a compiler transformation returns an inconsistent result."""
 
 
 def _violation(strategy_name: str, message: str) -> None:
-    raise CompilationContractError(f"{strategy_name} contract violation: {message}")
+    raise InvalidCompilerOutputError(
+        f"{strategy_name} produced an invalid compiler output: {message}"
+    )
 
 
-def _validate_common_postconditions(
+def _validate_common_output(
     *,
     strategy_name: str,
     input_before: QuantumCircuit,
@@ -73,7 +77,7 @@ def _require_sized_field(
     return value
 
 
-def validate_pcs_postconditions(
+def validate_pcs_output(
     *,
     input_before: QuantumCircuit,
     input_after: QuantumCircuit,
@@ -83,7 +87,7 @@ def validate_pcs_postconditions(
 ) -> None:
     """Validate structural guarantees made by PCS compilation."""
     strategy_name = "PCS"
-    metadata = _validate_common_postconditions(
+    metadata = _validate_common_output(
         strategy_name=strategy_name,
         input_before=input_before,
         input_after=input_after,
@@ -92,19 +96,46 @@ def validate_pcs_postconditions(
     )
     if metadata.get("num_checks") != num_checks:
         _violation(strategy_name, "metadata num_checks does not match the request")
-    _require_sized_field(
+    sign_list = _require_sized_field(
         metadata,
         field_name="sign_list",
         expected_length=num_checks,
         strategy_name=strategy_name,
     )
+    pauli_checks = _require_sized_field(
+        metadata,
+        field_name="pauli_checks",
+        expected_length=num_checks,
+        strategy_name=strategy_name,
+    )
+    for index, check in enumerate(pauli_checks):
+        if not isinstance(check, PauliCheck):
+            _violation(
+                strategy_name,
+                f"metadata pauli_checks entry {index} must be a PauliCheck",
+            )
+        if len(check.left) != input_before.num_qubits:
+            _violation(
+                strategy_name,
+                f"left Pauli width for check {index} does not match the payload",
+            )
+        if len(check.right) != input_before.num_qubits:
+            _violation(
+                strategy_name,
+                f"right Pauli width for check {index} does not match the payload",
+            )
+        if sign_list[index] != check.sign:
+            _violation(
+                strategy_name,
+                f"sign_list entry {index} does not match its PauliCheck phase",
+            )
     if metadata.get("ancilla_qubits") != num_checks:
         _violation(strategy_name, "PCS requires one ancilla per check")
     if output_circuit.num_qubits != input_before.num_qubits + num_checks:
         _violation(strategy_name, "the output width does not match the check count")
 
 
-def validate_afpc_postconditions(
+def validate_afpc_output(
     *,
     input_before: QuantumCircuit,
     input_after: QuantumCircuit,
@@ -114,7 +145,7 @@ def validate_afpc_postconditions(
 ) -> None:
     """Validate structural guarantees made by AFPC compilation."""
     strategy_name = "AFPC"
-    metadata = _validate_common_postconditions(
+    metadata = _validate_common_output(
         strategy_name=strategy_name,
         input_before=input_before,
         input_after=input_after,
@@ -136,7 +167,7 @@ def validate_afpc_postconditions(
         _violation(strategy_name, "AFPC must preserve the input circuit width")
 
 
-def validate_iceberg_postconditions(
+def validate_iceberg_output(
     *,
     input_before: QuantumCircuit,
     input_after: QuantumCircuit,
@@ -145,7 +176,7 @@ def validate_iceberg_postconditions(
 ) -> None:
     """Validate structural guarantees made by Iceberg compilation."""
     strategy_name = "ICEBERG"
-    metadata = _validate_common_postconditions(
+    metadata = _validate_common_output(
         strategy_name=strategy_name,
         input_before=input_before,
         input_after=input_after,
@@ -186,7 +217,7 @@ def validate_iceberg_postconditions(
             )
 
 
-def validate_pce_postconditions(
+def validate_pce_output(
     *,
     input_before: QuantumCircuit,
     input_after: QuantumCircuit,

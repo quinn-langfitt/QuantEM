@@ -24,21 +24,21 @@ from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
-from quantem.contracts import (
-    CompilationContractError,
-    validate_afpc_postconditions,
-    validate_iceberg_postconditions,
-    validate_pce_postconditions,
-    validate_pcs_postconditions,
+from quantem.validation.compiler_outputs import (
+    InvalidCompilerOutputError,
+    validate_afpc_output,
+    validate_iceberg_output,
+    validate_pce_output,
+    validate_pcs_output,
 )
 from quantem.iceberg_code import build_iceberg_circuit
 from quantem.pauli_check_extrapolation import analyze_pce_results
 from quantem.utils import (
-    convert_to_PCS_circ,
+    convert_to_PCS_circ_with_details,
     convert_to_ancilla_free_PCS_circ,
     find_largest_clifford_block,
 )
-from quantem.validation import (
+from quantem.validation.compiler_inputs import (
     IcebergOptions,
     validate_check_counts,
     validate_clifford_threshold,
@@ -74,7 +74,7 @@ __all__ = [
     "QEDStrategy",
     "CompilationResult",
     "PCECompilationResult",
-    "CompilationContractError",
+    "InvalidCompilerOutputError",
 ]
 
 
@@ -204,7 +204,7 @@ class QEDCompiler:
             TypeError: If a parameter has an invalid type.
             ValueError: If a parameter value is invalid or the requested checks
                 cannot be constructed.
-            CompilationContractError: If the selected transformation returns an
+            InvalidCompilerOutputError: If the selected transformation returns an
                 internally inconsistent circuit or metadata.
             NotImplementedError: If layout or gateset is supplied before those
                 compiler features are implemented.
@@ -254,7 +254,7 @@ class QEDCompiler:
             raise ValueError(f"Unknown strategy: {strategy}")
 
         if strategy == QEDStrategy.PCS:
-            validate_pcs_postconditions(
+            validate_pcs_output(
                 input_before=input_before,
                 input_after=circuit,
                 output_circuit=result_circuit,
@@ -262,7 +262,7 @@ class QEDCompiler:
                 num_checks=num_checks,
             )
         elif strategy == QEDStrategy.AFPC:
-            validate_afpc_postconditions(
+            validate_afpc_output(
                 input_before=input_before,
                 input_after=circuit,
                 output_circuit=result_circuit,
@@ -270,7 +270,7 @@ class QEDCompiler:
                 num_checks=num_checks,
             )
         else:
-            validate_iceberg_postconditions(
+            validate_iceberg_output(
                 input_before=input_before,
                 input_after=circuit,
                 output_circuit=result_circuit,
@@ -308,7 +308,7 @@ class QEDCompiler:
             TypeError: If a check count is not an integer.
             ValueError: If check_counts is empty, contains negative values or
                 duplicates, or a requested check count cannot be constructed.
-            CompilationContractError: If a PCS transformation returns an
+            InvalidCompilerOutputError: If a PCS transformation returns an
                 internally inconsistent circuit or metadata.
 
         Example:
@@ -342,7 +342,7 @@ class QEDCompiler:
             qed_circuit, metadata = self._compile_pcs(
                 circuit, num_checks, **asdict(options)
             )
-            validate_pcs_postconditions(
+            validate_pcs_output(
                 input_before=input_before,
                 input_after=circuit,
                 output_circuit=qed_circuit,
@@ -352,7 +352,7 @@ class QEDCompiler:
             compiled_circuits[num_checks] = qed_circuit
             metadata_dict[num_checks] = metadata
 
-        validate_pce_postconditions(
+        validate_pce_output(
             input_before=input_before,
             input_after=circuit,
             requested_counts=check_counts,
@@ -428,7 +428,7 @@ class QEDCompiler:
     ) -> tuple[QuantumCircuit, Dict[str, Any]]:
         """Apply Pauli Check Sandwiching strategy."""
         try:
-            sign_list, qed_circuit = convert_to_PCS_circ(
+            pauli_checks, qed_circuit = convert_to_PCS_circ_with_details(
                 circuit, circuit.num_qubits, num_checks,
                 barriers=kwargs.get('barriers', True),
                 reverse=kwargs.get('reverse', False),
@@ -437,7 +437,8 @@ class QEDCompiler:
             )
             
             metadata = {
-                "sign_list": sign_list,
+                "sign_list": [check.sign for check in pauli_checks],
+                "pauli_checks": pauli_checks,
                 "num_checks": num_checks,
                 "ancilla_qubits": num_checks,
                 "total_qubits": qed_circuit.num_qubits,

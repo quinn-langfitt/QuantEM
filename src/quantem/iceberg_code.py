@@ -24,7 +24,10 @@ from qiskit import transpile
 from qiskit.circuit import QuantumCircuit, QuantumRegister, ClassicalRegister, Instruction
 from qiskit.converters import circuit_to_dag, dag_to_circuit
 
-from quantem.validation import normalize_iceberg_options, validate_quantum_circuit
+from quantem.validation.compiler_inputs import (
+    normalize_iceberg_options,
+    validate_quantum_circuit,
+)
 
 
 class Syndrome_gate(Instruction):

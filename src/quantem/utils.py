@@ -48,9 +48,10 @@ from collections import deque
 
 from quantem.pauli_checks import (
     ChecksFinder,
+    PauliCheck,
     add_pauli_checks
 )
-from quantem.validation import validate_num_checks
+from quantem.validation.compiler_inputs import validate_num_checks
 
 logger = logging.getLogger(__name__)
 
@@ -218,7 +219,7 @@ def convert_to_ancilla_free_PCS_circ(
     return sign_list, final_circ, left_mappings_list, right_mappings_list
 
 
-def convert_to_PCS_circ(
+def convert_to_PCS_circ_with_details(
     circ: QuantumCircuit, 
     num_qubits: int, 
     num_checks: int, 
@@ -226,8 +227,8 @@ def convert_to_PCS_circ(
     reverse: bool = False, 
     only_X_checks: bool = False, 
     only_Z_checks: bool = False
-) -> tuple[List[str], QuantumCircuit]:
-    """Implement Pauli Check Sandwiching (PCS) with ancilla qubits.
+) -> tuple[List[PauliCheck], QuantumCircuit]:
+    """Implement PCS and return the selected check records.
     
     Wraps the input circuit with Pauli checks that propagate through the circuit
     to detect errors. Uses additional ancilla qubits for syndrome measurement.
@@ -242,8 +243,8 @@ def convert_to_PCS_circ(
         only_Z_checks: Restrict to Z-type right checks.
 
     Returns:
-        tuple: (sign_list, final_circ)
-            - sign_list: List of check signs ("+1", "-1").
+        tuple: (pauli_checks, final_circ)
+            - pauli_checks: Selected left/right checks and propagation phases.
             - final_circ: The protected circuit including check ancillas.
             
     Raises:
@@ -316,7 +317,7 @@ def convert_to_PCS_circ(
     # add pauli check on two sides:
     # specify the left and right pauli strings
     pcs_qc_list = []
-    sign_list = []
+    pauli_checks = []
     pl_list = []
     pr_list = []
 
@@ -377,13 +378,40 @@ def convert_to_PCS_circ(
             prev_qc = temp_qc
         pl_list.append(pl)
         pr_list.append(pr)
-        # sign_list.append(pauli_list[i][0][:2])
-        sign_list.append(p1_list[i][0][:2])
+        pauli_checks.append(
+            PauliCheck(
+                left=pl,
+                right=pr,
+                phase=int(p1_list[i][0][:2]),
+            )
+        )
         pcs_qc_list.append(save_qc)
 
     qc = pcs_qc_list[-1]  # return circuit with 'num_checks' implemented
 
-    return sign_list, qc
+    return pauli_checks, qc
+
+
+def convert_to_PCS_circ(
+    circ: QuantumCircuit,
+    num_qubits: int,
+    num_checks: int,
+    barriers: bool = False,
+    reverse: bool = False,
+    only_X_checks: bool = False,
+    only_Z_checks: bool = False,
+) -> tuple[List[str], QuantumCircuit]:
+    """Implement PCS while preserving the legacy ``(sign_list, circuit)`` API."""
+    pauli_checks, final_circ = convert_to_PCS_circ_with_details(
+        circ,
+        num_qubits,
+        num_checks,
+        barriers=barriers,
+        reverse=reverse,
+        only_X_checks=only_X_checks,
+        only_Z_checks=only_Z_checks,
+    )
+    return [check.sign for check in pauli_checks], final_circ
 
 
 def find_largest_clifford_block(slices):

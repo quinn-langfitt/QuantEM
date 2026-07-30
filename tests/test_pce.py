@@ -20,9 +20,9 @@ import numpy as np
 from qiskit import QuantumCircuit, QuantumRegister, transpile
 from qiskit_aer import AerSimulator
 from qiskit_aer.noise import NoiseModel, depolarizing_error
-from quantem import CompilationContractError
+from quantem import InvalidCompilerOutputError, PauliCheck
 from quantem.compiler import QEDCompiler, PCECompilationResult, QEDStrategy
-from quantem.contracts import validate_pce_postconditions
+from quantem.validation.compiler_outputs import validate_pce_output
 from quantem.pauli_check_extrapolation import analyze_pce_results
 from quantem.utils import convert_to_PCS_circ
 
@@ -36,6 +36,14 @@ class MockCompiler(QEDCompiler):
         return qc, {
             "checks_added": num_checks,
             "sign_list": ["+1"] * num_checks,
+            "pauli_checks": [
+                PauliCheck(
+                    left="I" * circuit.num_qubits,
+                    right="I" * circuit.num_qubits,
+                    phase=1,
+                )
+                for _ in range(num_checks)
+            ],
             "num_checks": num_checks,
             "ancilla_qubits": num_checks,
             "total_qubits": qc.num_qubits,
@@ -180,14 +188,14 @@ def test_compile_pce_rejects_unknown_options():
         )
 
 
-def test_pce_contract_rejects_missing_check_count_output():
+def test_pce_output_validation_rejects_missing_check_count():
     circuit = QuantumCircuit(2)
 
     with pytest.raises(
-        CompilationContractError,
-        match="PCE contract violation.*circuit keys",
+        InvalidCompilerOutputError,
+        match="PCE produced an invalid compiler output.*circuit keys",
     ):
-        validate_pce_postconditions(
+        validate_pce_output(
             input_before=circuit.copy(),
             input_after=circuit,
             requested_counts=[0, 1],

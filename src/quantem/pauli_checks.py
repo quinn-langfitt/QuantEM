@@ -13,6 +13,7 @@ See the License for the specific language governing permissions and
 limitations under the License.'''
 
 import pickle
+from dataclasses import dataclass
 from qiskit.transpiler.basepasses import AnalysisPass
 from collections import defaultdict
 from qiskit.dagcircuit import DAGOpNode
@@ -25,6 +26,38 @@ from copy import deepcopy
 from qiskit.converters import circuit_to_dag
 
 from qiskit.quantum_info import Operator
+
+
+@dataclass(frozen=True)
+class PauliCheck:
+    """A selected PCS check and its exact propagation phase.
+
+    The stored operators satisfy ``right * payload * left = phase * payload``.
+    Pauli strings use Qiskit's conventional most-significant-qubit-first order.
+    """
+
+    left: str
+    right: str
+    phase: int
+
+    def __post_init__(self) -> None:
+        for field_name, value in (("left", self.left), ("right", self.right)):
+            if not isinstance(value, str):
+                raise TypeError(f"{field_name} must be a Pauli string")
+            if not value or any(symbol not in "IXYZ" for symbol in value):
+                raise ValueError(
+                    f"{field_name} must contain only I, X, Y, and Z"
+                )
+        if isinstance(self.phase, bool) or not isinstance(self.phase, int):
+            raise TypeError("phase must be either -1 or 1")
+        if self.phase not in (-1, 1):
+            raise ValueError("phase must be either -1 or 1")
+
+    @property
+    def sign(self) -> str:
+        """Return the phase in the legacy sign-list representation."""
+        return f"{self.phase:+d}"
+
 
 class PushOperator:
     '''Class for finding checks and pushing operations through in symbolic form.'''
