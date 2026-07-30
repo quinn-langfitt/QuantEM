@@ -1,7 +1,7 @@
 # QuantEM: The Quantum Error Management Compiler
 
 [![Tests](https://github.com/QuantA-group/QuantEM/actions/workflows/test.yml/badge.svg)](https://github.com/QuantA-group/QuantEM/actions/workflows/test.yml)
-[![License](https://img.shields.io/github/license/QuantA-group/QuantEM?label=License)](LICENSE.txt)
+[![License](https://img.shields.io/badge/License-Apache%202.0-blue.svg)](LICENSE.txt)
 ![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python&logoColor=white)
 ![Qiskit](https://img.shields.io/badge/Qiskit-%3C2.0-6133BD?logo=qiskit&logoColor=white)
 
