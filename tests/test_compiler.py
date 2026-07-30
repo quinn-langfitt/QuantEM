@@ -2,19 +2,86 @@
 
 import pytest
 import numpy as np
-from dataclasses import asdict
+from types import SimpleNamespace
 from typing import List
 from qiskit import QuantumCircuit
 
-from quantem import QEDCompiler, QEDStrategy, CompilationResult
+from quantem import (
+    CompilationContractError,
+    CompilationResult,
+    QEDCompiler,
+    QEDStrategy,
+)
 from quantem.validation import IcebergOptions
 
 
 class RecordingIcebergCompiler(QEDCompiler):
-    """Avoid circuit synthesis when testing request normalization."""
+    """Record normalized Iceberg options before circuit synthesis."""
 
     def _compile_iceberg(self, circuit, options: IcebergOptions):
-        return circuit.copy(), asdict(options)
+        self.last_iceberg_options = options
+        return super()._compile_iceberg(circuit, options)
+
+
+class BrokenPCSMetadataCompiler(QEDCompiler):
+    """Return an otherwise valid PCS result with false metadata."""
+
+    def _compile_pcs(self, circuit, num_checks, **kwargs):
+        output, metadata = super()._compile_pcs(
+            circuit, num_checks, **kwargs
+        )
+        metadata["total_qubits"] += 1
+        return output, metadata
+
+
+class MutatingPCSCompiler(QEDCompiler):
+    """Violate the public guarantee that compilation preserves its input."""
+
+    def _compile_pcs(self, circuit, num_checks, **kwargs):
+        circuit.x(0)
+        return circuit.copy(), {
+            "sign_list": [],
+            "num_checks": 0,
+            "ancilla_qubits": 0,
+            "total_qubits": circuit.num_qubits,
+            "qubit_overhead": 0,
+        }
+
+
+class AliasingPCSCompiler(QEDCompiler):
+    """Return the caller-owned circuit as the compiled output."""
+
+    def _compile_pcs(self, circuit, num_checks, **kwargs):
+        return circuit, {
+            "sign_list": [],
+            "num_checks": 0,
+            "ancilla_qubits": 0,
+            "total_qubits": circuit.num_qubits,
+            "qubit_overhead": 0,
+        }
+
+
+class BrokenAFPCMappingsCompiler(QEDCompiler):
+    """Return an AFPC result with an incomplete mapping list."""
+
+    def _compile_afpc(self, circuit, num_checks, **kwargs):
+        output, metadata = super()._compile_afpc(
+            circuit, num_checks, **kwargs
+        )
+        metadata["right_mappings"] = []
+        return output, metadata
+
+
+class BrokenIcebergRegistersCompiler(QEDCompiler):
+    """Return an Iceberg result whose register metadata is incomplete."""
+
+    def _compile_iceberg(self, circuit, options):
+        output, metadata = super()._compile_iceberg(circuit, options)
+        metadata["register_bundle"] = SimpleNamespace(
+            t=metadata["register_bundle"].t,
+            p=metadata["register_bundle"].p,
+        )
+        return output, metadata
 
 
 class TestQEDCompiler:
@@ -340,15 +407,17 @@ class TestQEDCompiler:
 
     def test_iceberg_total_cycles_selects_cycle_count_mode(self):
         compiler = RecordingIcebergCompiler()
+        circuit = QuantumCircuit(2)
+        circuit.rxx(0.5, 0, 1)
 
-        result = compiler.compile(
-            QuantumCircuit(2),
+        compiler.compile(
+            circuit,
             strategy=QEDStrategy.ICEBERG,
-            total_syndrome_cycles=3,
+            total_syndrome_cycles=1,
         )
 
-        assert result.metadata["syndrome_interval"] == 0
-        assert result.metadata["total_syndrome_cycles"] == 3
+        assert compiler.last_iceberg_options.syndrome_interval == 0
+        assert compiler.last_iceberg_options.total_syndrome_cycles == 1
 
     def test_iceberg_rejects_impossible_syndrome_schedule(self):
         compiler = QEDCompiler()
@@ -390,6 +459,73 @@ class TestQEDCompiler:
         assert isinstance(result.circuit, QuantumCircuit)
         assert isinstance(result.strategy_used, QEDStrategy)
         assert isinstance(result.metadata, dict)
+
+    def test_pcs_contract_detects_false_metadata(self, simple_circuit):
+        compiler = BrokenPCSMetadataCompiler()
+
+        with pytest.raises(
+            CompilationContractError,
+            match="PCS contract violation.*total_qubits",
+        ):
+            compiler.compile(
+                simple_circuit,
+                strategy=QEDStrategy.PCS,
+                num_checks=1,
+            )
+
+    def test_pcs_contract_detects_input_mutation(self):
+        compiler = MutatingPCSCompiler()
+        circuit = QuantumCircuit(1)
+
+        with pytest.raises(
+            CompilationContractError,
+            match="PCS contract violation.*input circuit was mutated",
+        ):
+            compiler.compile(
+                circuit,
+                strategy=QEDStrategy.PCS,
+                num_checks=0,
+            )
+
+    def test_pcs_contract_detects_output_alias(self):
+        compiler = AliasingPCSCompiler()
+
+        with pytest.raises(
+            CompilationContractError,
+            match="PCS contract violation.*must not alias",
+        ):
+            compiler.compile(
+                QuantumCircuit(1),
+                strategy=QEDStrategy.PCS,
+                num_checks=0,
+            )
+
+    def test_afpc_contract_detects_incomplete_mappings(self, simple_circuit):
+        compiler = BrokenAFPCMappingsCompiler()
+
+        with pytest.raises(
+            CompilationContractError,
+            match="AFPC contract violation.*right_mappings",
+        ):
+            compiler.compile(
+                simple_circuit,
+                strategy=QEDStrategy.AFPC,
+                num_checks=1,
+            )
+
+    def test_iceberg_contract_detects_incomplete_register_bundle(
+        self, qaoa_circuit
+    ):
+        compiler = BrokenIcebergRegistersCompiler()
+
+        with pytest.raises(
+            CompilationContractError,
+            match=r"ICEBERG contract violation.*register_bundle\.b",
+        ):
+            compiler.compile(
+                qaoa_circuit,
+                strategy=QEDStrategy.ICEBERG,
+            )
 
 
 class TestQEDStrategies:

@@ -17,20 +17,30 @@ sys.modules["mapomatic"] = MagicMock()
 
 import pytest
 import numpy as np
-from qiskit import QuantumCircuit, transpile
+from qiskit import QuantumCircuit, QuantumRegister, transpile
 from qiskit_aer import AerSimulator
 from qiskit_aer.noise import NoiseModel, depolarizing_error
+from quantem import CompilationContractError
 from quantem.compiler import QEDCompiler, PCECompilationResult, QEDStrategy
+from quantem.contracts import validate_pce_postconditions
 from quantem.pauli_check_extrapolation import analyze_pce_results
 from quantem.utils import convert_to_PCS_circ
 
 class MockCompiler(QEDCompiler):
     """Mock compiler to avoid full PCS logic overhead in unit tests."""
     def _compile_pcs(self, circuit, num_checks, **kwargs):
-        # Return a dummy circuit with metadata
         qc = circuit.copy()
+        if num_checks:
+            qc.add_register(QuantumRegister(num_checks, "pcs_check"))
         qc.metadata = {"num_checks": num_checks}
-        return qc, {"checks_added": num_checks}
+        return qc, {
+            "checks_added": num_checks,
+            "sign_list": ["+1"] * num_checks,
+            "num_checks": num_checks,
+            "ancilla_qubits": num_checks,
+            "total_qubits": qc.num_qubits,
+            "qubit_overhead": num_checks,
+        }
 
 def test_compile_pce_structure():
     """Test that compile_pce returns the correct structure."""
@@ -167,6 +177,22 @@ def test_compile_pce_rejects_unknown_options():
             QuantumCircuit(2),
             check_counts=[0],
             barier=True,
+        )
+
+
+def test_pce_contract_rejects_missing_check_count_output():
+    circuit = QuantumCircuit(2)
+
+    with pytest.raises(
+        CompilationContractError,
+        match="PCE contract violation.*circuit keys",
+    ):
+        validate_pce_postconditions(
+            input_before=circuit.copy(),
+            input_after=circuit,
+            requested_counts=[0, 1],
+            circuits={0: circuit.copy()},
+            metadata={0: {}},
         )
 
 

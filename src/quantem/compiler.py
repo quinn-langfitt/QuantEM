@@ -24,6 +24,13 @@ from dataclasses import asdict, dataclass
 from enum import Enum
 from typing import TYPE_CHECKING, Any, Dict, Optional
 
+from quantem.contracts import (
+    CompilationContractError,
+    validate_afpc_postconditions,
+    validate_iceberg_postconditions,
+    validate_pce_postconditions,
+    validate_pcs_postconditions,
+)
 from quantem.iceberg_code import build_iceberg_circuit
 from quantem.pauli_check_extrapolation import analyze_pce_results
 from quantem.utils import (
@@ -67,6 +74,7 @@ __all__ = [
     "QEDStrategy",
     "CompilationResult",
     "PCECompilationResult",
+    "CompilationContractError",
 ]
 
 
@@ -196,10 +204,13 @@ class QEDCompiler:
             TypeError: If a parameter has an invalid type.
             ValueError: If a parameter value is invalid or the requested checks
                 cannot be constructed.
+            CompilationContractError: If the selected transformation returns an
+                internally inconsistent circuit or metadata.
             NotImplementedError: If layout or gateset is supplied before those
                 compiler features are implemented.
         """
         validate_quantum_circuit(circuit)
+        input_before = circuit.copy()
 
         if layout is not None:
             raise NotImplementedError("layout-aware compilation is not implemented")
@@ -241,6 +252,30 @@ class QEDCompiler:
             result_circuit, metadata = self._compile_iceberg(circuit, options)
         else:
             raise ValueError(f"Unknown strategy: {strategy}")
+
+        if strategy == QEDStrategy.PCS:
+            validate_pcs_postconditions(
+                input_before=input_before,
+                input_after=circuit,
+                output_circuit=result_circuit,
+                metadata=metadata,
+                num_checks=num_checks,
+            )
+        elif strategy == QEDStrategy.AFPC:
+            validate_afpc_postconditions(
+                input_before=input_before,
+                input_after=circuit,
+                output_circuit=result_circuit,
+                metadata=metadata,
+                num_checks=num_checks,
+            )
+        else:
+            validate_iceberg_postconditions(
+                input_before=input_before,
+                input_after=circuit,
+                output_circuit=result_circuit,
+                metadata=metadata,
+            )
             
         return CompilationResult(
             circuit=result_circuit,
@@ -273,6 +308,8 @@ class QEDCompiler:
             TypeError: If a check count is not an integer.
             ValueError: If check_counts is empty, contains negative values or
                 duplicates, or a requested check count cannot be constructed.
+            CompilationContractError: If a PCS transformation returns an
+                internally inconsistent circuit or metadata.
 
         Example:
             >>> compiler = QEDCompiler()
@@ -288,6 +325,7 @@ class QEDCompiler:
             >>> result = analyze_pce_results(expectations, n_max=4)
         """
         validate_quantum_circuit(circuit)
+        input_before = circuit.copy()
         check_counts = validate_check_counts(check_counts)
         options = normalize_pauli_check_options(kwargs, strategy_name="PCE")
 
@@ -304,8 +342,23 @@ class QEDCompiler:
             qed_circuit, metadata = self._compile_pcs(
                 circuit, num_checks, **asdict(options)
             )
+            validate_pcs_postconditions(
+                input_before=input_before,
+                input_after=circuit,
+                output_circuit=qed_circuit,
+                metadata=metadata,
+                num_checks=num_checks,
+            )
             compiled_circuits[num_checks] = qed_circuit
             metadata_dict[num_checks] = metadata
+
+        validate_pce_postconditions(
+            input_before=input_before,
+            input_after=circuit,
+            requested_counts=check_counts,
+            circuits=compiled_circuits,
+            metadata=metadata_dict,
+        )
 
         self.logger.info(f"PCE compilation complete for {len(compiled_circuits)} circuits")
 
