@@ -7,7 +7,7 @@ This project contains the first Python-based compiler that automatically integra
 
 ## Getting Started
 
-**Prerequisites:** Python 3.9+ and a Rust toolchain (needed to build the compiled extension). If you don't already have Rust, install it via [rustup](https://rustup.rs).
+**Prerequisites:** Python 3.9+ and a Rust toolchain (needed to build the compiled extension). 
 
 To install the `quantem` package from source:
 
