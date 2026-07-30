@@ -196,8 +196,6 @@ def test_pce_output_validation_rejects_missing_check_count():
         match="PCE produced an invalid compiler output.*circuit keys",
     ):
         validate_pce_output(
-            input_before=circuit.copy(),
-            input_after=circuit,
             requested_counts=[0, 1],
             circuits={0: circuit.copy()},
             metadata={0: {}},

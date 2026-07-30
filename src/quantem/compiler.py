@@ -26,6 +26,7 @@ from typing import TYPE_CHECKING, Any, Dict, Optional
 
 from quantem.validation.compiler_outputs import (
     InvalidCompilerOutputError,
+    reject_input_mutation,
     validate_afpc_output,
     validate_iceberg_output,
     validate_pce_output,
@@ -253,26 +254,24 @@ class QEDCompiler:
         else:
             raise ValueError(f"Unknown strategy: {strategy}")
 
+        reject_input_mutation(strategy.value.upper(), input_before, circuit)
         if strategy == QEDStrategy.PCS:
             validate_pcs_output(
-                input_before=input_before,
-                input_after=circuit,
+                input_circuit=circuit,
                 output_circuit=result_circuit,
                 metadata=metadata,
                 num_checks=num_checks,
             )
         elif strategy == QEDStrategy.AFPC:
             validate_afpc_output(
-                input_before=input_before,
-                input_after=circuit,
+                input_circuit=circuit,
                 output_circuit=result_circuit,
                 metadata=metadata,
                 num_checks=num_checks,
             )
         else:
             validate_iceberg_output(
-                input_before=input_before,
-                input_after=circuit,
+                input_circuit=circuit,
                 output_circuit=result_circuit,
                 metadata=metadata,
             )
@@ -343,8 +342,7 @@ class QEDCompiler:
                 circuit, num_checks, **asdict(options)
             )
             validate_pcs_output(
-                input_before=input_before,
-                input_after=circuit,
+                input_circuit=circuit,
                 output_circuit=qed_circuit,
                 metadata=metadata,
                 num_checks=num_checks,
@@ -352,9 +350,8 @@ class QEDCompiler:
             compiled_circuits[num_checks] = qed_circuit
             metadata_dict[num_checks] = metadata
 
+        reject_input_mutation("PCE", input_before, circuit)
         validate_pce_output(
-            input_before=input_before,
-            input_after=circuit,
             requested_counts=check_counts,
             circuits=compiled_circuits,
             metadata=metadata_dict,
