@@ -31,6 +31,11 @@ from quantem.utils import (
     convert_to_ancilla_free_PCS_circ,
     find_largest_clifford_block,
 )
+from quantem.validation import (
+    validate_check_counts,
+    validate_clifford_threshold,
+    validate_num_checks,
+)
 from qiskit_addon_utils.slicing import slice_by_depth
 
 if TYPE_CHECKING:
@@ -140,8 +145,10 @@ class QEDCompiler:
             default_num_checks: Default number of checks for PCS/AFPC
             verbose: Enable verbose logging output
         """
-        self.clifford_threshold = clifford_threshold
-        self.default_num_checks = default_num_checks
+        self.clifford_threshold = validate_clifford_threshold(clifford_threshold)
+        self.default_num_checks = validate_num_checks(
+            default_num_checks, parameter_name="default_num_checks"
+        )
         
         # Set up logging
         self.logger = logging.getLogger(__name__)
@@ -182,7 +189,9 @@ class QEDCompiler:
             CompilationResult with protected circuit and metadata
 
         Raises:
-            ValueError: If invalid strategy or parameters provided (e.g., both only_X_checks and only_Z_checks are True)
+            TypeError: If a parameter has an invalid type.
+            ValueError: If a parameter value is invalid or the requested checks
+                cannot be constructed.
         """
         if num_checks is None:
             num_checks = self.default_num_checks
@@ -194,6 +203,9 @@ class QEDCompiler:
         # Strategy selection
         if strategy == QEDStrategy.AUTO:
             strategy = self._select_strategy(circuit)
+
+        if strategy in (QEDStrategy.PCS, QEDStrategy.AFPC):
+            num_checks = validate_num_checks(num_checks)
             
         self.logger.info(f"Compiling circuit with {strategy.value.upper()} strategy")
         
@@ -231,15 +243,17 @@ class QEDCompiler:
 
         Args:
             circuit: Input quantum circuit to protect
-            check_counts: List of check counts to compile
-                         Example: [1, 2, 3] compiles with 1, 2, and 3 checks
+            check_counts: Unique, non-negative check counts to compile. Include
+                zero to generate an unprotected baseline circuit.
             **kwargs: Additional PCS-specific parameters (barriers, reverse, etc.)
 
         Returns:
             PCECompilationResult containing circuits for each check count
 
         Raises:
-            ValueError: If check_counts is empty or contains negative values
+            TypeError: If a check count is not an integer.
+            ValueError: If check_counts is empty, contains negative values or
+                duplicates, or a requested check count cannot be constructed.
 
         Example:
             >>> compiler = QEDCompiler()
@@ -254,12 +268,7 @@ class QEDCompiler:
             >>> from quantem.pauli_check_extrapolation import analyze_pce_results
             >>> result = analyze_pce_results(expectations, n_max=4)
         """
-        # Validate check_counts
-        if not check_counts:
-            raise ValueError("check_counts must contain at least one value")
-
-        if any(n < 0 for n in check_counts):
-            raise ValueError("check_counts must contain non-negative integers")
+        check_counts = validate_check_counts(check_counts)
 
         # Validate check type parameters
         if kwargs.get('only_X_checks', False) and kwargs.get('only_Z_checks', False):
@@ -354,6 +363,8 @@ class QEDCompiler:
             
             return qed_circuit, metadata
             
+        except (TypeError, ValueError):
+            raise
         except Exception as e:
             raise RuntimeError(f"PCS compilation failed: {e}") from e
     
@@ -384,6 +395,8 @@ class QEDCompiler:
             
             return qed_circuit, metadata
             
+        except (TypeError, ValueError):
+            raise
         except Exception as e:
             raise RuntimeError(f"AFPC compilation failed: {e}") from e
     
@@ -395,20 +408,25 @@ class QEDCompiler:
             qed_circuit, reg_bundle = build_iceberg_circuit(
                 circuit,
                 optimize_level=kwargs.get('optimize_level', 3),
-                attach_readout=kwargs.get('attach_readout', True)
+                attach_readout=kwargs.get('attach_readout', True),
+                syndrome_interval=kwargs.get('syndrome_interval', 5),
+                total_syndrome_cycles=kwargs.get('total_syndrome_cycles', 5),
             )
-            
+
+            qubit_overhead = qed_circuit.num_qubits - circuit.num_qubits
+            code_qubit_overhead = 2
             metadata = {
                 "register_bundle": reg_bundle,
-                "ancilla_qubits": 2,  # Iceberg uses 2 ancillas
+                "code_qubit_overhead": code_qubit_overhead,
+                "ancilla_qubits": qubit_overhead - code_qubit_overhead,
                 "total_qubits": qed_circuit.num_qubits,
-                "qubit_overhead": 2,
+                "qubit_overhead": qubit_overhead,
                 "distance": 2,  # Iceberg is distance-2 code
             }
             
             return qed_circuit, metadata
             
+        except (TypeError, ValueError):
+            raise
         except Exception as e:
             raise RuntimeError(f"Iceberg compilation failed: {e}") from e
-
-

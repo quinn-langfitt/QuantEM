@@ -159,8 +159,12 @@ def insert_syndrome_measurement(
             insert_syndrome_op(syndrome_subcircuit, regs, syn_reg, syn_c_reg)
 
             # Add the new subcircuit’s operations to the DAG
-            for inst, qargs, cargs in syndrome_subcircuit.data:
-                new_dag.apply_operation_back(inst, qargs=qargs, cargs=cargs)
+            for instruction in syndrome_subcircuit.data:
+                new_dag.apply_operation_back(
+                    instruction.operation,
+                    qargs=instruction.qubits,
+                    cargs=instruction.clbits,
+                )
 
             syndrome_meas_count += 1
 
@@ -255,6 +259,13 @@ def build_iceberg_circuit(
     total_syndrome_cycles
         The total number of syndromes measurements which evenly divide the circuit depth
 
+    Raises
+    ------
+    TypeError
+        If a scheduling parameter has an invalid type.
+    ValueError
+        If the Iceberg code or syndrome schedule constraints are not satisfied.
+
     Returns
     -------
     phys_qc
@@ -262,6 +273,26 @@ def build_iceberg_circuit(
     regs
         SimpleNamespace with named QuantumRegisters.
     """
+    if logical_qc.num_qubits == 0 or logical_qc.num_qubits % 2 != 0:
+        raise ValueError(
+            "Iceberg requires a positive, even number of logical qubits"
+        )
+    if isinstance(optimize_level, bool) or optimize_level not in range(4):
+        raise ValueError("optimize_level must be an integer between 0 and 3")
+    if not isinstance(attach_readout, bool):
+        raise TypeError("attach_readout must be a bool")
+    if isinstance(syndrome_interval, bool) or not isinstance(syndrome_interval, int):
+        raise TypeError("syndrome_interval must be a non-negative integer")
+    if syndrome_interval < 0:
+        raise ValueError("syndrome_interval must be a non-negative integer")
+    if (
+        isinstance(total_syndrome_cycles, bool)
+        or not isinstance(total_syndrome_cycles, int)
+    ):
+        raise TypeError("total_syndrome_cycles must be a non-negative integer")
+    if total_syndrome_cycles < 0:
+        raise ValueError("total_syndrome_cycles must be a non-negative integer")
+
     # 1 — transpile
     decomposed = transpile(
         logical_qc,
@@ -272,11 +303,17 @@ def build_iceberg_circuit(
     # Validate or derive syndrome interval
     if syndrome_interval == 0:
         if total_syndrome_cycles == 0:
-            raise ValueError("Either `syndrome_interval` or `total_syndrome_cycles` must be specified.")
-        else:
-            syndrome_interval = decomposed.depth() // total_syndrome_cycles
+            raise ValueError(
+                "Either `syndrome_interval` or `total_syndrome_cycles` "
+                "must be specified."
+            )
+        if decomposed.depth() < total_syndrome_cycles:
+            raise ValueError(
+                "total_syndrome_cycles cannot exceed the transpiled circuit depth"
+            )
+        syndrome_interval = decomposed.depth() // total_syndrome_cycles
     # add logical syndrome gates as place holder
-    log_qc = add_logical_syndrome_gates(decomposed, syndrome_interval) 
+    log_qc = add_logical_syndrome_gates(decomposed, syndrome_interval)
 
     # 2 — initial state
     phys_qc, regs = initial_state_prep(num_logical=decomposed.num_qubits)
@@ -292,4 +329,3 @@ def build_iceberg_circuit(
         add_logical_measurement(new_phys_qc, regs)
 
     return new_phys_qc, regs
-

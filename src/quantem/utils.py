@@ -50,6 +50,7 @@ from quantem.pauli_checks import (
     ChecksFinder,
     add_pauli_checks
 )
+from quantem.validation import validate_num_checks
 
 logger = logging.getLogger(__name__)
 
@@ -115,11 +116,20 @@ def convert_to_ancilla_free_PCS_circ(
             - right_mappings: List of qubit mappings for right checks.
             
     Raises:
-        ValueError: If both only_X_checks and only_Z_checks are True.
+        TypeError: If num_checks is not an integer.
+        ValueError: If the circuit width is inconsistent, check filters conflict,
+            or the requested number of compatible checks cannot be constructed.
     """
 
+    num_checks = validate_num_checks(num_checks)
+    if num_qubits != circ.num_qubits:
+        raise ValueError(
+            f"num_qubits ({num_qubits}) must match circuit width ({circ.num_qubits})"
+        )
     if only_X_checks and only_Z_checks:
         raise ValueError("Cannot specify both only_X_checks and only_Z_checks")
+    if num_checks == 0:
+        return [], circ.copy(), [], []
 
     if only_X_checks:
         characters = ["I", "X"]
@@ -179,10 +189,13 @@ def convert_to_ancilla_free_PCS_circ(
             sign_list.append(left_str[:2])
             if len(selected_pairs) >= num_checks:
                 break
-        except Exception as e:
+        except Exception:
             continue
     if len(selected_pairs) < num_checks:
-        logger.warning("Less checks found than required: %d < %d", len(selected_pairs), num_checks)
+        raise ValueError(
+            f"Requested {num_checks} AFPC checks, but only "
+            f"{len(selected_pairs)} compatible checks were found"
+        )
 
     final_left_check_circ = QuantumCircuit(num_qubits)
     for lm in left_mappings_list:
@@ -234,12 +247,19 @@ def convert_to_PCS_circ(
             - final_circ: The protected circuit including check ancillas.
             
     Raises:
-        ValueError: If both only_X_checks and only_Z_checks are True.
+        TypeError: If num_checks is not an integer.
+        ValueError: If the circuit width is inconsistent, check filters conflict,
+            or the requested number of valid checks cannot be constructed.
     """
-    total_qubits = num_qubits + num_checks
-
+    num_checks = validate_num_checks(num_checks)
+    if num_qubits != circ.num_qubits:
+        raise ValueError(
+            f"num_qubits ({num_qubits}) must match circuit width ({circ.num_qubits})"
+        )
     if only_X_checks and only_Z_checks:
         raise ValueError("Cannot specify both only_X_checks and only_Z_checks")
+    if num_checks == 0:
+        return [], circ.copy()
 
     if only_X_checks:
         characters = ["I", "X"]
@@ -276,11 +296,14 @@ def convert_to_PCS_circ(
                 logger.debug("Required number of checks found")
                 logger.debug("p1_list = %s", p1_list)
                 break  # Stop the loop if we have found enough checks
-        except Exception as e:
+        except Exception:
             continue  # Skip to the next iteration if an error occurs
 
     if found_checks < num_checks:
-        logger.warning("Less checks found than required: %d < %d", found_checks, num_checks)
+        raise ValueError(
+            f"Requested {num_checks} PCS checks, but only "
+            f"{found_checks} valid checks were found"
+        )
 
     initial_layout = {}
     for i in range(0, num_qubits):
@@ -614,5 +637,3 @@ def generate_mapping_ranges_bfs(num_qubits_circuit, num_qubits_backend, coupling
         if len(used) >= num_qubits_backend:
             break
     return ranges
-
-

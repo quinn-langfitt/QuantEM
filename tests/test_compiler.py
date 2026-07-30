@@ -91,6 +91,28 @@ class TestQEDCompiler:
         )
         assert compiler_custom.clifford_threshold == 0.5
         assert compiler_custom.default_num_checks == 3
+
+    @pytest.mark.parametrize("threshold", [-0.1, 1.1])
+    def test_invalid_clifford_threshold(self, threshold):
+        with pytest.raises(ValueError, match="between 0 and 1"):
+            QEDCompiler(clifford_threshold=threshold)
+
+    @pytest.mark.parametrize("num_checks", [-1, 1.5, True])
+    def test_invalid_default_num_checks(self, num_checks):
+        expected = TypeError if isinstance(num_checks, (float, bool)) else ValueError
+        with pytest.raises(expected, match="non-negative integer"):
+            QEDCompiler(default_num_checks=num_checks)
+
+    @pytest.mark.parametrize("num_checks", [-1, 1.5, True])
+    def test_invalid_compile_num_checks(self, simple_circuit, num_checks):
+        expected = TypeError if isinstance(num_checks, (float, bool)) else ValueError
+        compiler = QEDCompiler()
+        with pytest.raises(expected, match="non-negative integer"):
+            compiler.compile(
+                simple_circuit,
+                strategy=QEDStrategy.PCS,
+                num_checks=num_checks,
+            )
     
     def test_circuit_analysis(self, simple_circuit):
         """Test circuit analysis functionality."""
@@ -171,10 +193,46 @@ class TestQEDCompiler:
         assert isinstance(result, CompilationResult)
         assert result.strategy_used == QEDStrategy.ICEBERG
         
-        # Iceberg should add exactly 2 ancilla qubits
-        assert result.metadata["ancilla_qubits"] == 2
-        assert result.metadata["qubit_overhead"] == 2
+        # Iceberg has two code qubits plus preparation/syndrome/readout ancillas.
+        assert result.metadata["code_qubit_overhead"] == 2
+        assert result.metadata["qubit_overhead"] == (
+            result.circuit.num_qubits - qaoa_circuit.num_qubits
+        )
+        assert result.metadata["ancilla_qubits"] == (
+            result.metadata["qubit_overhead"] - 2
+        )
         assert result.metadata["distance"] == 2
+
+    def test_iceberg_rejects_odd_logical_width(self):
+        compiler = QEDCompiler()
+        with pytest.raises(ValueError, match="positive, even"):
+            compiler.compile(
+                QuantumCircuit(3),
+                strategy=QEDStrategy.ICEBERG,
+            )
+
+    @pytest.mark.parametrize("optimize_level", [-1, 4, True])
+    def test_iceberg_rejects_invalid_optimization_level(self, optimize_level):
+        compiler = QEDCompiler()
+        with pytest.raises(ValueError, match="between 0 and 3"):
+            compiler.compile(
+                QuantumCircuit(2),
+                strategy=QEDStrategy.ICEBERG,
+                optimize_level=optimize_level,
+            )
+
+    def test_iceberg_rejects_impossible_syndrome_schedule(self):
+        compiler = QEDCompiler()
+        circuit = QuantumCircuit(2)
+        circuit.rxx(0.5, 0, 1)
+
+        with pytest.raises(ValueError, match="cannot exceed"):
+            compiler.compile(
+                circuit,
+                strategy=QEDStrategy.ICEBERG,
+                syndrome_interval=0,
+                total_syndrome_cycles=2,
+            )
     
     def test_default_num_checks(self, simple_circuit):
         """Test that default number of checks is used when not specified."""

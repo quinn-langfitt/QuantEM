@@ -22,6 +22,7 @@ from qiskit_aer import AerSimulator
 from qiskit_aer.noise import NoiseModel, depolarizing_error
 from quantem.compiler import QEDCompiler, PCECompilationResult, QEDStrategy
 from quantem.pauli_check_extrapolation import analyze_pce_results
+from quantem.utils import convert_to_PCS_circ
 
 class MockCompiler(QEDCompiler):
     """Mock compiler to avoid full PCS logic overhead in unit tests."""
@@ -128,6 +129,72 @@ def test_compile_pce_negative_check_counts():
 
     with pytest.raises(ValueError, match="check_counts must contain non-negative integers"):
         compiler.compile_pce(circuit, check_counts=[1, -2, 3])
+
+
+@pytest.mark.parametrize("invalid_count", [1.5, "2", True])
+def test_compile_pce_non_integer_check_counts(invalid_count):
+    compiler = MockCompiler()
+    circuit = QuantumCircuit(2)
+
+    with pytest.raises(TypeError, match="non-negative integer"):
+        compiler.compile_pce(circuit, check_counts=[0, invalid_count])
+
+
+def test_compile_pce_duplicate_check_counts():
+    compiler = MockCompiler()
+    circuit = QuantumCircuit(2)
+
+    with pytest.raises(ValueError, match="must not contain duplicate"):
+        compiler.compile_pce(circuit, check_counts=[0, 1, 1])
+
+
+def test_compile_pce_zero_check_baseline():
+    compiler = QEDCompiler()
+    circuit = QuantumCircuit(2)
+    circuit.h(0)
+    circuit.cx(0, 1)
+
+    result = compiler.compile_pce(circuit, check_counts=[0, 1])
+
+    assert result.circuits[0] == circuit
+    assert result.circuits[0] is not circuit
+    assert result.metadata[0]["num_checks"] == 0
+    assert result.metadata[0]["ancilla_qubits"] == 0
+    assert result.metadata[0]["qubit_overhead"] == 0
+
+
+def test_pcs_fails_if_requested_checks_cannot_be_found():
+    compiler = QEDCompiler()
+    circuit = QuantumCircuit(1)
+    circuit.h(0)
+
+    with pytest.raises(ValueError, match=r"Requested 2 PCS checks.*only 1"):
+        compiler.compile_pce(
+            circuit,
+            check_counts=[2],
+            only_Z_checks=True,
+        )
+
+
+def test_afpc_fails_if_requested_checks_cannot_be_found():
+    compiler = QEDCompiler()
+    circuit = QuantumCircuit(1)
+    circuit.h(0)
+
+    with pytest.raises(ValueError, match=r"Requested 2 AFPC checks.*only 1"):
+        compiler.compile(
+            circuit,
+            strategy=QEDStrategy.AFPC,
+            num_checks=2,
+            only_Z_checks=True,
+        )
+
+
+def test_pcs_rejects_inconsistent_circuit_width():
+    circuit = QuantumCircuit(2)
+
+    with pytest.raises(ValueError, match=r"num_qubits \(3\).*circuit width \(2\)"):
+        convert_to_PCS_circ(circuit, num_qubits=3, num_checks=1)
 
 
 def test_compile_pce_conflicting_check_types():
