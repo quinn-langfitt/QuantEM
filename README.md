@@ -1,13 +1,17 @@
-#### `QuantEM`: the quantum error management compiler
+# QuantEM: The Quantum Error Management Compiler
 
----
-Error detection will be an integral part of quantum processing, especially for near-term demonstrations of quantum advantage. Unfortunately, adding quantum error detection (QED) to arbitrary quantum circuits is a daunting task as deep knowledge of detecting codes and required circuit modifications is required.
+[![Tests](https://github.com/QuantA-group/QuantEM/actions/workflows/test.yml/badge.svg)](https://github.com/QuantA-group/QuantEM/actions/workflows/test.yml)
+[![License](https://img.shields.io/github/license/QuantA-group/QuantEM?label=License)](LICENSE.txt)
+![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python&logoColor=white)
+![Qiskit](https://img.shields.io/badge/Qiskit-%3C2.0-6133BD?logo=qiskit&logoColor=white)
 
-This project contains the first Python-based compiler that automatically integrates QED into quantum circuits, simplifying the inclusion of QED into quantum error management workflows. High-level quantum programs are translated into error-detectable low-level circuits that are quantum machine compatable. You can read more about the project [here](https://arxiv.org/abs/2509.15505).
+`QuantEM` is the first Python-based compiler that automatically integrates quantum error detection (QED) into quantum circuits, simplifying the inclusion of QED into quantum error management workflows. High-level quantum programs are translated into error-detectable low-level circuits that are quantum machine compatible. You can read more about the project in our [paper](https://arxiv.org/abs/2509.15505).
+
+Error detection will be an integral part of quantum processing, especially for near-term demonstrations of quantum advantage. Unfortunately, adding quantum error detection (QED) to arbitrary quantum circuits is a daunting task as deep knowledge of detecting codes and required circuit modifications is required. `QuantEM` automates that process.
 
 ## Getting Started
 
-**Prerequisites:** Python 3.9+ and a Rust toolchain (needed to build the compiled extension). 
+**Prerequisites:** Python 3.9+ and a Rust toolchain (needed to build the compiled extension).
 
 To install the `quantem` package from source:
 
@@ -15,12 +19,35 @@ To install the `quantem` package from source:
 pip install .
 ```
 
-<br>
-Please visit the `example_notebooks` directory for `qed_compiler` tutorials. The additional dependencies needed to run the notebooks can be installed using:
+Please visit the `example_notebooks` directory for `quantem` tutorials. The additional dependencies needed to run the notebooks can be installed using:
 
 ```sh
 pip install .[notebook]
 ```
+
+## Quickstart
+
+Protect a payload circuit with Pauli Check Sandwiching:
+
+```python
+from qiskit import QuantumCircuit
+from quantem import QEDCompiler, QEDStrategy
+
+# Build the payload circuit you want to protect
+circuit = QuantumCircuit(2)
+circuit.h(0)
+circuit.cx(0, 1)
+
+# Automatically integrate quantum error detection
+compiler = QEDCompiler()
+result = compiler.compile(circuit, strategy=QEDStrategy.PCS, num_checks=2)
+
+print(result.strategy_used)   # QEDStrategy.PCS
+print(result.metadata)        # checks, ancilla qubits, and other details
+print(result.circuit)         # the error-detectable circuit
+```
+
+Pass `strategy=QEDStrategy.AUTO` (the default) to let `QuantEM` choose a strategy based on the circuit, or use `compiler.compile_pce(circuit, check_counts=[1, 2, 3])` to generate a family of circuits for Pauli Check Extrapolation.
 
 ## Supported QED Protocols
 
