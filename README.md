@@ -30,3 +30,19 @@ on an ancilla through phase kickback. The errors that are detected in $U$ antico
 + **Pauli Check Extrapolation, PCE**: PCE builds on Pauli check techniques to mitigate errors by running a payload circuit with varying numbers of Pauli checks and extrapolating the resulting expectation values to the maximum check limit. Fitting a model across the check counts (e.g. linear or exponential) yields an error-mitigated estimate of the ideal expectation value. See the [PCE demo notebook](example_notebooks/pce_demo.ipynb) for a walkthrough.
 + **Iceberg Code**: The Iceberg code is a distance 2 code, [[k+2, k, 2]] for even k, that scales efficiently with the number of 
 logical qubits. The Iceberg code requires only two additional qubits for the encoded state. The code implements fault-tolerant initial state preparation and syndrome measurement circuits capable of detecting any single-qubit error.
+
+## Citation
+
+If `QuantEM` is useful in your work, we'd be grateful if you cited our [paper](https://arxiv.org/abs/2509.15505). A BibTeX entry is also available in [`citation.bib`](citation.bib):
+
+```bibtex
+@misc{liu2025quantemquantumerrormanagement,
+      title={QuantEM: The quantum error management compiler},
+      author={Ji Liu and Quinn Langfitt and Mingyoung Jessica Jeng and Alvin Gonzales and Noble Agyeman-Bobie and Kaiya Jones and Siddharth Vijaymurugan and Daniel Dilley and Zain H. Saleem and Nikos Hardavellas and Kaitlin N. Smith},
+      year={2025},
+      eprint={2509.15505},
+      archivePrefix={arXiv},
+      primaryClass={quant-ph},
+      url={https://arxiv.org/abs/2509.15505},
+}
+```
