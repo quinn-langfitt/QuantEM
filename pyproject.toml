@@ -4,7 +4,38 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "quantem"
-dynamic = ["version"] # "dependencies"
+version = "0.1.0"
+description = "A Python compiler that automatically integrates quantum error detection (QED) into quantum circuits."
+readme = "README.md"
+requires-python = ">=3.9"
+license = "Apache-2.0"
+license-files = ["LICENSE.txt"]
+authors = [
+    { name = "Ji Liu" },
+    { name = "Quinn Langfitt" },
+    { name = "Mingyoung Jessica Jeng" },
+    { name = "Alvin Gonzales" },
+    { name = "Noble Agyeman-Bobie" },
+    { name = "Kaiya Jones" },
+    { name = "Siddharth Vijaymurugan" },
+    { name = "Daniel Dilley" },
+    { name = "Zain H. Saleem" },
+    { name = "Nikos Hardavellas" },
+    { name = "Kaitlin N. Smith" },
+]
+keywords = ["quantum", "quantum-computing", "error-detection", "compiler", "qiskit", "qed"]
+classifiers = [
+    "Development Status :: 3 - Alpha",
+    "Intended Audience :: Science/Research",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Rust",
+    "Topic :: Scientific/Engineering :: Physics",
+]
 dependencies = [
     "qiskit<2.0",
     "qiskit_addon_utils",
@@ -13,6 +44,11 @@ dependencies = [
     "rustworkx",
     "networkx"
 ]
+
+[project.urls]
+Homepage = "https://github.com/QuantA-group/QuantEM"
+Repository = "https://github.com/QuantA-group/QuantEM"
+Paper = "https://arxiv.org/abs/2509.15505"
 
 [project.optional-dependencies]
 notebook = [
@@ -23,9 +59,19 @@ notebook = [
     "qiskit_ibm_runtime",
     "seaborn",
 ]
+dev = [
+    "pytest",
+    "pytest-mock",
+    "qiskit-aer",
+]
 
 [[tool.setuptools-rust.ext-modules]]
 target = "quantem.rust" # The last part of the name (e.g. "_lib") has to match lib.name in Cargo.toml,
 # See reference for RustExtension in https://setuptools-rust.readthedocs.io/en/latest/reference.html
 
-[project.scripts]
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    # qiskit / qiskit-aer internal deprecations we don't control (qiskit pinned <2.0)
+    "ignore:The property.*Instruction.condition.*is deprecated:DeprecationWarning",
+]
