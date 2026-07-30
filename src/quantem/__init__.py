@@ -4,7 +4,7 @@ Licensed under the Apache License, Version 2.0 (the "License");
 you may not use this file except in compliance with the License.
 You may obtain a copy of the License at:
 
-    https://github.com/quinn-langfitt/QuantEM/blob/main/LICENSE.txt
+    https://github.com/QuantA-group/QuantEM/blob/main/LICENSE.txt
 
 Unless required by applicable law or agreed to in writing, software
 distributed under the License is distributed on an "AS IS" BASIS,
@@ -19,6 +19,12 @@ into quantum circuits using various QED protocols.
 """
 
 import sys
+from importlib.metadata import PackageNotFoundError, version
+
+try:
+    __version__ = version("quantem")
+except PackageNotFoundError:  # package is not installed (e.g. running from source)
+    __version__ = "0.0.0"
 
 # ==== rust stuff ==== #
 
@@ -35,6 +41,7 @@ sys.modules["quantem.rust.sabre"] = rust.sabre
 from .compiler import QEDCompiler, QEDStrategy, CompilationResult, PCECompilationResult
 
 __all__ = [
+    "__version__",
     "QEDCompiler",
     "QEDStrategy",
     "CompilationResult",
