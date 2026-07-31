@@ -13,6 +13,12 @@ This project contains the first Python-based compiler that automatically integra
 
 **Prerequisites:** Python 3.9+ and a Rust toolchain (needed to build the compiled extension).
 
+To install the latest version directly from GitHub:
+
+```sh
+pip install git+https://github.com/QuantA-group/QuantEM.git
+```
+
 To install the `quantem` package from source:
 
 ```sh
