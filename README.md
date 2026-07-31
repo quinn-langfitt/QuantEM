@@ -5,9 +5,9 @@
 [![Python](https://img.shields.io/badge/Python-3.9%2B-blue?logo=python&logoColor=white)](https://www.python.org/)
 [![Qiskit](https://img.shields.io/badge/Qiskit-%3C2.0-6133BD?logo=qiskit&logoColor=white)](https://github.com/Qiskit/qiskit)
 
-`QuantEM` is the first Python-based compiler that automatically integrates quantum error detection (QED) into quantum circuits, simplifying the inclusion of QED into quantum error management workflows. High-level quantum programs are translated into error-detectable low-level circuits that are quantum machine compatible. You can read more about the project in our [paper](https://arxiv.org/abs/2509.15505).
+Error detection will be an integral part of quantum processing, especially for near-term demonstrations of quantum advantage. Unfortunately, adding quantum error detection (QED) to arbitrary quantum circuits is a daunting task as deep knowledge of detecting codes and required circuit modifications is required.
 
-Error detection will be an integral part of quantum processing, especially for near-term demonstrations of quantum advantage. Unfortunately, adding quantum error detection (QED) to arbitrary quantum circuits is a daunting task as deep knowledge of detecting codes and required circuit modifications is required. `QuantEM` automates that process.
+This project contains the first Python-based compiler that automatically integrates QED into quantum circuits, simplifying the inclusion of QED into quantum error management workflows. High-level quantum programs are translated into error-detectable low-level circuits that are quantum machine compatable. You can read more about the project [here](https://arxiv.org/abs/2509.15505).
 
 ## Getting Started
 
