@@ -27,7 +27,7 @@ pip install .[notebook]
 
 ## Quickstart
 
-Protect a payload circuit with Pauli Check Sandwiching:
+To protect a payload circuit with Pauli Check Sandwiching:
 
 ```python
 from qiskit import QuantumCircuit
